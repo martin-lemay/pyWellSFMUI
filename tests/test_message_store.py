@@ -1,8 +1,9 @@
+import logging
 from datetime import datetime
 
 import pytest
 
-from pywellsfmui.state.message_store import Message, MessageLevel
+from pywellsfmui.state.message_store import Message, MessageLevel, MessageStore
 
 
 def test_message_level_values():
@@ -33,9 +34,6 @@ def test_message_is_immutable():
     )
     with pytest.raises(AttributeError):
         msg.text = "changed"
-
-
-from pywellsfmui.state.message_store import MessageStore
 
 
 def test_add_appends_message():
@@ -71,9 +69,6 @@ def test_clear():
     store.add(MessageLevel.INFO, "two")
     store.clear()
     assert store.messages == []
-
-
-import logging
 
 
 def test_logging_handler_info():
