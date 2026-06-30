@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pywellsfmui"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "pywellsfm",
+    "panel>=1.4",
+    "plotly>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=6.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
