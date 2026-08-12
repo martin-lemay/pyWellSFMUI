@@ -6,7 +6,12 @@ release = "0.1.0"
 
 extensions = [
     "myst_parser",
+    "sphinx.ext.intersphinx",
 ]
+
+intersphinx_mapping = {
+    "pywellsfm": ("https://pywellsfm.readthedocs.io/en/latest/", None),
+}
 
 myst_enable_extensions = [
     "colon_fence",
