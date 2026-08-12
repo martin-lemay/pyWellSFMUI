@@ -3,9 +3,7 @@ title: pyWellSFM
 emoji: "\U0001F30D"
 colorFrom: blue
 colorTo: green
-sdk: panel
-sdk_version: 1.4.0
-app_file: src/pywellsfmui/app.py
+sdk: docker
 pinned: false
 ---
 
