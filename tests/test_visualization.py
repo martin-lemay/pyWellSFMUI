@@ -134,10 +134,16 @@ def test_wells_panel_renders_grouped_wells():
     md_texts = [o.object for o in panel.objects if isinstance(o, pn.pane.Markdown)]
     assert any("## Wells" in t for t in md_texts)
 
-    selects = [o for o in panel.objects if isinstance(o, pn.widgets.Select)]
+    # Controls row contains Select + Checkbox
+    controls = [o for o in panel.objects if isinstance(o, pn.Row)]
+    assert len(controls) >= 1
+    ctrl_row = controls[0]
+    selects = [o for o in ctrl_row.objects if isinstance(o, pn.widgets.Select)]
     assert len(selects) == 1
     expected_options = sorted({"Facies", "MainElement"})
     assert selects[0].options == expected_options
+    checkboxes = [o for o in ctrl_row.objects if isinstance(o, pn.widgets.Checkbox)]
+    assert len(checkboxes) == 2
 
 
 def test_wells_panel_dropdown_defaults_to_facies():
@@ -146,7 +152,10 @@ def test_wells_panel_dropdown_defaults_to_facies():
     state.simulation_outputs = _make_dataset(n_real=1)
 
     real = _make_mock_well("W1", discrete_logs={"Facies", "GR"})
-    sim = _make_mock_well("W1_sim_0", discrete_logs={"Facies", "MainElement"})
+    sim = _make_mock_well(
+        "W1_sim_0",
+        discrete_logs={"Facies", "MainElement"},
+    )
     rd = MagicMock()
     rd.well = real
     state.realization_data_list = [rd]
@@ -160,6 +169,47 @@ def test_wells_panel_dropdown_defaults_to_facies():
     ):
         panel = view._wells_panel()
 
-    selects = [o for o in panel.objects if isinstance(o, pn.widgets.Select)]
+    ctrl_row = [o for o in panel.objects if isinstance(o, pn.Row)][0]
+    selects = [o for o in ctrl_row.objects if isinstance(o, pn.widgets.Select)]
     assert len(selects) == 1
     assert selects[0].value == "Facies"
+
+
+def test_wells_panel_preserves_user_selection():
+    """Log dropdown keeps user selection across rebuilds."""
+    state = AppState()
+    actions = _make_actions(state)
+    state.simulation_outputs = _make_dataset(n_real=1)
+
+    real = _make_mock_well(
+        "W1",
+        discrete_logs={"Facies", "GR"},
+    )
+    sim = _make_mock_well(
+        "W1_sim_0",
+        discrete_logs={"Facies", "MainElement"},
+    )
+    rd = MagicMock()
+    rd.well = real
+    state.realization_data_list = [rd]
+    state.simulated_wells = [sim]
+
+    view = VisualizationView(state=state, actions=actions)
+
+    with patch(
+        "pywellsfmui.views.visualization.build_well_log_plot",
+        return_value=go.Figure(),
+    ):
+        view._wells_panel()
+
+    # User changes selection to GR
+    view._log_select.value = "GR"
+
+    with patch(
+        "pywellsfmui.views.visualization.build_well_log_plot",
+        return_value=go.Figure(),
+    ):
+        # Trigger rebuild (same outputs)
+        view._wells_panel()
+
+    assert view._log_select.value == "GR"

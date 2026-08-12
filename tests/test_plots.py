@@ -151,6 +151,30 @@ def test_build_well_log_plot_discrete():
     assert fig is fake_fig
 
 
+def test_build_well_log_plot_discrete_with_color_map():
+    """Discrete log passes color_map to plot_litho_log."""
+    well = MagicMock()
+    well.name = "W1"
+    well.getDiscreteLogNames.return_value = {"MainElement"}
+    well.getContinuousLogNames.return_value = set()
+
+    fake_fig = MagicMock(spec=go.Figure)
+    fake_fig.update_layout = MagicMock()
+    cmap = {"Mud": "#636EFA", "Sand": "#EF553B"}
+
+    with patch(
+        "pywellsfmui.plots.plot_litho_log",
+        return_value=fake_fig,
+    ) as mock_plot:
+        build_well_log_plot(well, "MainElement", color_map=cmap)
+        mock_plot.assert_called_once_with(
+            well,
+            "MainElement",
+            cmap,
+            depth_range=None,
+        )
+
+
 def test_build_well_log_plot_continuous():
     """Continuous log produces a line scatter plot."""
     well = MagicMock()
