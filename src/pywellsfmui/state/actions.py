@@ -1236,6 +1236,14 @@ class Actions:
             source="actions",
         )
 
+    def clear_eustatic_curve(self) -> None:
+        self._state.eustatic_curve = None
+        self._messages.add(
+            MessageLevel.INFO,
+            "Eustatic curve cleared",
+            source="actions",
+        )
+
     def update_eustatic_curve_point(self, index: int, age: float, value: float) -> None:
         curve = self._state.eustatic_curve
         if curve is None:

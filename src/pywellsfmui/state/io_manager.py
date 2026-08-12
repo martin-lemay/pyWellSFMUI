@@ -1,9 +1,14 @@
 from pathlib import Path
+from typing import Any
 
 from pywellsfm.io import (
+    depositionalEnvironmentSimulationToJsonObj,
+    environmentConditionsModelToJsonObj,
     loadAccumulationModel,
     loadCurvesFromFile,
     loadDepositionalEnvironmentModel,
+    loadDepositionalEnvironmentSimulationFromJsonObj,
+    loadEnvironmentConditionsModelFromJsonObj,
     loadFaciesModel,
     loadFSSimulation,
     loadWell,
@@ -21,7 +26,13 @@ from pywellsfm.model import (
     FaciesModel,
     Well,
 )
-from pywellsfm.simulator import FSSimulator
+from pywellsfm.model.EnvironmentConditionModel import (
+    EnvironmentConditionsModel,
+)
+from pywellsfm.simulator import (
+    DepositionalEnvironmentSimulator,
+    FSSimulator,
+)
 
 
 class IOManager:
@@ -65,7 +76,32 @@ class IOManager:
     def load_simulation(self, path: str) -> FSSimulator:
         return loadFSSimulation(path)
 
-    def save_simulation(
-        self, simulator: FSSimulator, path: str, name: str
-    ) -> None:
+    def save_simulation(self, simulator: FSSimulator, path: str, name: str) -> None:
         saveFSSimulation(simulator, path, name=name)
+
+    def load_de_simulation_from_json_obj(
+        self,
+        obj: dict[str, Any],
+    ) -> DepositionalEnvironmentSimulator:
+        return loadDepositionalEnvironmentSimulationFromJsonObj(obj)
+
+    def export_de_simulation_to_json_obj(
+        self,
+        simulator: DepositionalEnvironmentSimulator,
+    ) -> dict[str, Any]:
+        return depositionalEnvironmentSimulationToJsonObj(simulator)
+
+    def load_env_conditions_from_json_obj(
+        self,
+        obj: dict[str, Any],
+    ) -> EnvironmentConditionsModel:
+        return loadEnvironmentConditionsModelFromJsonObj(
+            obj,
+            base_dir=None,
+        )
+
+    def export_env_conditions_to_json_obj(
+        self,
+        model: EnvironmentConditionsModel,
+    ) -> dict[str, Any]:
+        return environmentConditionsModelToJsonObj(model)
