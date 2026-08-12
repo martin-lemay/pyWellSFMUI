@@ -50,9 +50,7 @@ def get_environment_color(name: str, seen: set[str]) -> str:
     if name not in seen:
         seen.add(name)
     index = sorted(seen).index(name)
-    color = _PALETTE[index % len(_PALETTE)]
-    ENVIRONMENT_COLORS[name] = color
-    return color
+    return _PALETTE[index % len(_PALETTE)]
 
 
 def _add_env_legend_traces(
@@ -351,34 +349,289 @@ def build_production_rates_plot(
     return fig
 
 
-def build_well_log_plot(
-    well: Well,
-    log_name: str,
-    depth_range: tuple[float, float] | None = None,
+_MARKER_STYLES: dict[str, dict] = {
+    "Conform": dict(
+        color="gray",
+        dash="solid",
+        width=1.0,
+    ),
+    "Erosive": dict(
+        color="red",
+        dash="solid",
+        width=1.5,
+    ),
+    "Toplap": dict(
+        color="orange",
+        dash="dashdot",
+        width=1.0,
+    ),
+    "Baselap": dict(
+        color="blue",
+        dash="dot",
+        width=1.0,
+    ),
+    "Unknown": dict(
+        color="gray",
+        dash="dash",
+        width=0.5,
+    ),
+}
+
+_N_WAVE_POINTS = 80
+_WAVE_AMPLITUDE = 0.05
+
+
+def _add_erosive_marker(
+    fig: go.Figure,
+    y: float,
+    name: str,
+    visible: bool = True,
+) -> None:
+    """Add a wavy red line for an erosive marker."""
+    xs = np.linspace(0, 1, _N_WAVE_POINTS)
+    ys = y + _WAVE_AMPLITUDE * np.sin(xs * 30 * np.pi)
+    fig.add_trace(
+        go.Scatter(
+            x=xs,
+            y=ys,
+            mode="lines",
+            line=dict(color="red", width=1.5),
+            showlegend=False,
+            hoverinfo="skip",
+            visible=visible,
+        )
+    )
+    fig.add_annotation(
+        x=0.0,
+        y=y,
+        text=name,
+        showarrow=False,
+        xanchor="left",
+        yanchor="bottom",
+        font=dict(size=9, color="red"),
+        visible=visible,
+    )
+
+
+def _add_markers(
+    fig: go.Figure,
+    markers: list[Marker],
+    use_age: bool = False,
+    visible: bool = True,
+) -> None:
+    """Add horizontal lines at marker positions.
+
+    Line style varies by stratigraphic type. Erosive
+    markers are drawn as wavy red lines. All elements
+    are added with the given *visible* flag so they
+    can be toggled later via ``set_markers_visible``.
+    """
+    for m in markers:
+        y = m.age if use_age else m.depth
+        if np.isnan(y):
+            continue
+        stype = str(m.stratigraphicType)
+        if stype == "Erosive":
+            _add_erosive_marker(
+                fig,
+                y,
+                m.name,
+                visible=visible,
+            )
+            continue
+        style = _MARKER_STYLES.get(stype, _MARKER_STYLES["Unknown"])
+        fig.add_shape(
+            type="line",
+            x0=0,
+            x1=1,
+            xref="paper",
+            y0=y,
+            y1=y,
+            line=dict(
+                dash=style["dash"],
+                color=style["color"],
+                width=style["width"],
+            ),
+            visible=visible,
+        )
+        fig.add_annotation(
+            x=1,
+            xref="paper",
+            y=y,
+            text=m.name,
+            xanchor="left",
+            font_size=9,
+            showarrow=False,
+            visible=visible,
+        )
+
+
+def set_markers_visible(
+    fig: go.Figure,
+    visible: bool,
+) -> None:
+    """Toggle visibility of marker elements on *fig*.
+
+    Uses the boundary indices stored in
+    ``fig.layout.meta["marker_start"]`` by
+    ``build_well_log_plot`` to identify which traces,
+    shapes, and annotations belong to markers.
+    """
+    meta = fig.layout.meta or {}
+    start = meta.get("marker_start")
+    if start is None:
+        return
+
+    for i in range(start["traces"], len(fig.data)):
+        fig.data[i].visible = visible
+
+    shapes = list(fig.layout.shapes or ())
+    for i in range(start["shapes"], len(shapes)):
+        shapes[i]["visible"] = visible
+    fig.update_layout(shapes=shapes)
+
+    annotations = list(fig.layout.annotations or ())
+    for i in range(start["annotations"], len(annotations)):
+        annotations[i]["visible"] = visible
+    fig.update_layout(annotations=annotations)
+
+
+_FALLBACK_LOG_COLOR = "lightgray"
+
+
+def _plot_striplog(
+    striplog,  # noqa: ANN001
+    color_map: dict[str, str] | None,
 ) -> go.Figure:
-    """Build a Plotly figure for a single well log track.
+    """Render a Striplog as colored rectangles.
 
     Args:
-        well: Well object containing the log.
-        log_name: Name of the log to display.
-        depth_range: Optional (top, base) depth limits.
+        striplog: Striplog instance to render.
+        color_map: Label-to-color mapping. Falls back to
+            a default gray for unknown labels.
 
     Returns:
         A Plotly Figure.
     """
+    colors = color_map or {}
+    fig = go.Figure()
+    for interval in striplog:
+        litho = interval.primary["lithology"]
+        color = colors.get(litho, _FALLBACK_LOG_COLOR)
+        fig.add_shape(
+            type="rect",
+            x0=0,
+            x1=1,
+            y0=interval.top.middle,
+            y1=interval.base.middle,
+            fillcolor=color,
+            opacity=0.7,
+            line={"color": "black", "width": 0.5},
+        )
+        y_mid = (interval.top.middle + interval.base.middle) / 2
+        fig.add_annotation(
+            x=0.5,
+            y=y_mid,
+            text=litho,
+            showarrow=False,
+            font={"size": 10},
+        )
+    fig.update_xaxes(
+        showticklabels=False,
+        range=[0, 1],
+    )
+    fig.update_layout(
+        showlegend=False,
+        margin={"l": 5, "r": 5, "t": 30, "b": 30},
+    )
+    return fig
+
+
+def _record_marker_boundary(fig: go.Figure) -> None:
+    """Store current element counts so markers added
+    after this call can be toggled independently."""
+    fig.update_layout(
+        meta={
+            "marker_start": {
+                "traces": len(fig.data),
+                "shapes": len(fig.layout.shapes or ()),
+                "annotations": len(fig.layout.annotations or ()),
+            },
+        }
+    )
+
+
+def build_well_log_plot(
+    well: Well,
+    log_name: str,
+    depth_range: tuple[float, float] | None = None,
+    color_map: dict[str, str] | None = None,
+    show_markers: bool = False,
+    use_age: bool = False,
+) -> go.Figure:
+    """Build a Plotly figure for a single well log track.
+
+    Markers are always added to the figure. The
+    *show_markers* flag controls their initial
+    visibility. Use ``set_markers_visible`` to toggle
+    them later without rebuilding the figure.
+
+    Args:
+        well: Well object containing the log.
+        log_name: Name of the log to display.
+        depth_range: Optional (top, base) limits on the
+            vertical axis.
+        color_map: Optional mapping of label names to CSS
+            colors for discrete logs.
+        show_markers: Initial visibility of well markers.
+        use_age: If True, use age-domain logs and label
+            the Y-axis as Age (My).
+
+    Returns:
+        A Plotly Figure.
+    """
+    y_label = "Age (My)" if use_age else "Depth"
+    get_log = well.getAgeLog if use_age else well.getDepthLog
     discrete_names = well.getDiscreteLogNames()
     continuous_names = well.getContinuousLogNames()
 
     if log_name in discrete_names:
-        fig = plot_litho_log(well, log_name, None, depth_range=depth_range)
+        if use_age:
+            log = get_log(log_name)
+            if log is not None:
+                fig = _plot_striplog(log, color_map)
+            else:
+                fig = go.Figure()
+            fig.update_yaxes(
+                autorange="reversed",
+                title_text=y_label,
+            )
+        else:
+            fig = plot_litho_log(
+                well,
+                log_name,
+                color_map,
+                depth_range=depth_range,
+            )
         fig.update_layout(
             title=well.name,
             height=500,
         )
+        if depth_range is not None and use_age:
+            fig.update_yaxes(
+                range=[depth_range[1], depth_range[0]],
+            )
+        _record_marker_boundary(fig)
+        _add_markers(
+            fig,
+            well.getMarkers(),
+            use_age,
+            visible=show_markers,
+        )
         return fig
 
     if log_name in continuous_names:
-        log = well.getDepthLog(log_name)
+        log = get_log(log_name)
         fig = go.Figure()
         if log is not None:
             fig.add_trace(
@@ -392,7 +645,7 @@ def build_well_log_plot(
         fig.update_layout(
             title=well.name,
             xaxis_title=log_name,
-            yaxis_title="Depth",
+            yaxis_title=y_label,
             yaxis_autorange="reversed",
             margin=dict(l=50, r=20, t=40, b=50),
             height=500,
@@ -401,6 +654,13 @@ def build_well_log_plot(
             fig.update_yaxes(
                 range=[depth_range[1], depth_range[0]],
             )
+        _record_marker_boundary(fig)
+        _add_markers(
+            fig,
+            well.getMarkers(),
+            use_age,
+            visible=show_markers,
+        )
         return fig
 
     # Missing log — return placeholder with N/A annotation
@@ -416,7 +676,7 @@ def build_well_log_plot(
     )
     fig.update_layout(
         title=well.name,
-        yaxis_title="Depth",
+        yaxis_title=y_label,
         yaxis_autorange="reversed",
         margin=dict(l=50, r=20, t=40, b=50),
         height=500,
