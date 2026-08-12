@@ -30,9 +30,7 @@ class MessageStore(param.Parameterized):
 
     MAX_MESSAGES = 200
 
-    def add(
-        self, level: MessageLevel, text: str, source: str | None = None
-    ) -> None:
+    def add(self, level: MessageLevel, text: str, source: str | None = None) -> None:
         msg = Message(
             timestamp=datetime.now(),
             level=level,
