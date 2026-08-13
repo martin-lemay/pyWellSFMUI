@@ -1,16 +1,26 @@
 # Examples
 
-pyWellSFMUI ships with ready-to-use example files in the `examples/` directory.
-They cover the two main workflows -- accommodation calculation and forward
-simulation -- at increasing levels of complexity.
+pyWellSFMUI ships with ready-to-use example files that cover the two main
+workflows -- accommodation calculation and forward simulation -- at increasing
+levels of complexity.
+
+## Download All Examples
+
+| File | Description |
+|------|-------------|
+| {download}`accommodation_facies_model.json <../../examples/accommodation_facies_model.json>` | Facies model (3 siliciclastic facies) |
+| {download}`accommodation_well.json <../../examples/accommodation_well.json>` | Well0 -- 120 m, 9 intervals |
+| {download}`accommodation_well2.json <../../examples/accommodation_well2.json>` | Well1 -- 100 m, 9 intervals |
+| {download}`simulation_simple.json <../../examples/simulation_simple.json>` | Simple carbonate simulation (3 producers, 2 wells) |
+| {download}`simulation_carbonate_platform.json <../../examples/simulation_carbonate_platform.json>` | Carbonate protected ramp (6 producers, 5 wells, 11 environments) |
 
 ## Accommodation Calculation
 
 **Files:**
 
-- `examples/accommodation_facies_model.json` -- Facies model
-- `examples/accommodation_well.json` -- Well0 (120 m, 9 intervals)
-- `examples/accommodation_well2.json` -- Well1 (100 m, 9 intervals)
+- {download}`accommodation_facies_model.json <../../examples/accommodation_facies_model.json>` -- Facies model
+- {download}`accommodation_well.json <../../examples/accommodation_well.json>` -- Well0 (120 m, 9 intervals)
+- {download}`accommodation_well2.json <../../examples/accommodation_well2.json>` -- Well1 (100 m, 9 intervals)
 
 **Geological context:**
 A simple siliciclastic setting with three facies defined by water depth
@@ -43,7 +53,7 @@ uncertainty in the accommodation calculation.
 
 ## Simple Simulation
 
-**File:** `examples/simulation_simple.json`
+**File:** {download}`simulation_simple.json <../../examples/simulation_simple.json>`
 
 **Geological context:**
 A minimal carbonate platform with three sediment producers, each modeled
@@ -83,7 +93,7 @@ alternations in both wells.
 
 ## Advanced Simulation: Carbonate Protected Ramp
 
-**File:** `examples/simulation_carbonate_platform.json`
+**File:** {download}`simulation_carbonate_platform.json <../../examples/simulation_carbonate_platform.json>`
 
 **Geological context:**
 A Cretaceous-style carbonate protected ramp with six sediment producers

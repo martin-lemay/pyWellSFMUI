@@ -49,7 +49,7 @@ def _install_wheels(venv_dir: Path, wheels_dir: Path) -> None:
         print(f"ERROR: No .whl files found in {wheels_dir}")
         _pause_and_exit(1)
     print("Installing packages...")
-    cmd = [pip, "install"] + wheel_files
+    cmd = [pip, "install", "--find-links", str(wheels_dir)] + wheel_files
     result = subprocess.run(cmd)
     if result.returncode != 0:
         print(
