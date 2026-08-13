@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from launcher.find_python import (
     _check_python_version,
     _find_anaconda_python,
+    _find_conda_base_python,
     _find_path_python,
     _find_py_launcher_python,
     find_python,
@@ -54,23 +55,57 @@ class TestCheckPythonVersion:
 class TestFindPyLauncher:
     """Tests for _find_py_launcher_python."""
 
-    @patch("launcher.find_python._check_python_version")
+    @patch("launcher.find_python.subprocess.run")
     @patch("launcher.find_python.shutil.which")
     def test_py_launcher_found(
         self,
         mock_which: MagicMock,
-        mock_check: MagicMock,
+        mock_run: MagicMock,
     ) -> None:
-        """Returns 'py -3.13' when py launcher is available."""
+        """Returns 'py -3.13' when py -3.13 reports Python 3.13."""
         mock_which.return_value = r"C:\Windows\py.exe"
-        mock_check.return_value = True
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="Python 3.13.1\n"
+        )
         result = _find_py_launcher_python()
         assert result == "py -3.13"
+        mock_run.assert_called_once_with(
+            ["py", "-3.13", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+    @patch("launcher.find_python.subprocess.run")
+    @patch("launcher.find_python.shutil.which")
+    def test_py_launcher_version_too_old(
+        self,
+        mock_which: MagicMock,
+        mock_run: MagicMock,
+    ) -> None:
+        """Returns None when py -3.13 reports a version below 3.13."""
+        mock_which.return_value = r"C:\Windows\py.exe"
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="Python 3.12.4\n"
+        )
+        assert _find_py_launcher_python() is None
 
     @patch("launcher.find_python.shutil.which")
     def test_py_launcher_not_found(self, mock_which: MagicMock) -> None:
         """Returns None when py launcher is absent."""
         mock_which.return_value = None
+        assert _find_py_launcher_python() is None
+
+    @patch("launcher.find_python.subprocess.run")
+    @patch("launcher.find_python.shutil.which")
+    def test_py_launcher_subprocess_error(
+        self,
+        mock_which: MagicMock,
+        mock_run: MagicMock,
+    ) -> None:
+        """Returns None when py -3.13 raises FileNotFoundError."""
+        mock_which.return_value = r"C:\Windows\py.exe"
+        mock_run.side_effect = FileNotFoundError
         assert _find_py_launcher_python() is None
 
 
@@ -133,6 +168,52 @@ class TestFindAnacondaPython:
         mock_env.return_value = ""
         mock_exists.return_value = False
         assert _find_anaconda_python() is None
+
+
+class TestFindCondaBasePython:
+    """Tests for _find_conda_base_python."""
+
+    @patch("launcher.find_python.shutil.which")
+    def test_conda_not_found(self, mock_which: MagicMock) -> None:
+        """Returns None when conda is not on PATH."""
+        mock_which.return_value = None
+        assert _find_conda_base_python() is None
+
+    @patch("launcher.find_python.subprocess.run")
+    @patch("launcher.find_python.shutil.which")
+    def test_conda_nonzero_returncode(
+        self,
+        mock_which: MagicMock,
+        mock_run: MagicMock,
+    ) -> None:
+        """Returns None when conda info --base exits non-zero."""
+        mock_which.return_value = (
+            r"C:\ProgramData\miniconda3\condabin\conda.bat"
+        )
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+        assert _find_conda_base_python() is None
+
+    @patch("launcher.find_python._check_python_version")
+    @patch("launcher.find_python.subprocess.run")
+    @patch("launcher.find_python.shutil.which")
+    def test_conda_base_found(
+        self,
+        mock_which: MagicMock,
+        mock_run: MagicMock,
+        mock_check: MagicMock,
+    ) -> None:
+        """Returns python.exe path when conda base has Python 3.13+."""
+        mock_which.return_value = (
+            r"C:\ProgramData\miniconda3\condabin\conda.bat"
+        )
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout=r"C:\ProgramData\miniconda3" + "\n"
+        )
+        mock_check.return_value = True
+        result = _find_conda_base_python()
+        assert result is not None
+        assert result.endswith("python.exe")
+        assert "miniconda3" in result
 
 
 class TestFindPython:

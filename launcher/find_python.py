@@ -34,10 +34,29 @@ def _check_python_version(python_path: str) -> bool:
 
 
 def _find_py_launcher_python() -> str | None:
-    """Try the official Windows Python Launcher."""
+    """Try the official Windows Python Launcher.
+
+    Runs ``py -3.13 --version`` directly because ``py`` alone invokes
+    the default Python, not the 3.13 one.
+    """
     if shutil.which("py") is None:
         return None
-    if _check_python_version(["py", "-3.13"][0]):
+    try:
+        result = subprocess.run(
+            ["py", "-3.13", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    match = re.search(r"Python (\d+)\.(\d+)", result.stdout)
+    if not match:
+        return None
+    major, minor = int(match.group(1)), int(match.group(2))
+    if major == 3 and minor >= _MIN_MINOR:
         return "py -3.13"
     return None
 
