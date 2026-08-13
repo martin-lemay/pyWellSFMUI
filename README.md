@@ -1,3 +1,14 @@
+---
+title: pyWellSFMUI
+emoji: 🌊
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+suggested_hardware: cpu-basic
+---
+
 [![CI](https://github.com/martin-lemay/pyWellSFMUI/actions/workflows/ci.yml/badge.svg)](https://github.com/martin-lemay/pyWellSFMUI/actions)
 [![docs](https://readthedocs.org/projects/pywellsfmui/badge/?version=latest)](https://pywellsfmui.readthedocs.io/en/latest/)
 
