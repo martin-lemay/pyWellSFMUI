@@ -36,7 +36,7 @@ def _check_venv(venv_dir: Path) -> None:
 
 def _read_config(
     config_file: Path,
-) -> dict[str, int | str]:
+) -> dict[str, int]:
     """Read config.ini and return settings dict."""
     config = configparser.ConfigParser()
     config.read(str(config_file))
