@@ -44,6 +44,10 @@ docs = [
     "myst-parser>=4.0",
     "furo>=2024.8",
 ]
+packaging = [
+    "build>=1.2",
+    "pyinstaller>=6.0",
+]
 
 [project.readme]
 file = "README.md"
