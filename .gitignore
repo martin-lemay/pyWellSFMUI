@@ -84,5 +84,11 @@ CLAUDE.md
 .superpowers/
 docs/superpowers/
 
+# Launcher build artifacts
+dist/exes/
+dist/wheels/
+dist/build_temp/
+dist/*.zip
+
 # Logs
 *.log
