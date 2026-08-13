@@ -18,6 +18,7 @@ The app is organized into three main sections accessible from the sidebar:
 :caption: User Guide
 
 user-guide/getting-started
+user-guide/examples
 user-guide/well-analysis
 user-guide/simulation
 user-guide/visualization

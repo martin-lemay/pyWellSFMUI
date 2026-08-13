@@ -1,0 +1,207 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martin-lemay/pyWellSFM/main/jsonSchemas/FSSimulationDataSchema.json",
+    "format": "pyWellSFM.FSSimulationData",
+    "version": "1.0",
+    "name": "SimpleCarbonatePlatform",
+    "scenario": {
+        "format": "pyWellSFM.ScenarioData",
+        "version": "1.0",
+        "name": "SimpleCarbonateScenario",
+        "accumulationModel": {
+            "format": "pyWellSFM.AccumulationModelData",
+            "version": "1.0",
+            "accumulationModel": {
+                "name": "SimpleAccumulationModel",
+                "elements": {
+                    "CarbonateShallow": {
+                        "accumulationRate": 1.0,
+                        "model": {
+                            "modelType": "Gaussian",
+                            "stddevFactor": 0.4
+                        }
+                    },
+                    "CarbonateIntermediate": {
+                        "accumulationRate": 0.5,
+                        "model": {
+                            "modelType": "Gaussian",
+                            "stddevFactor": 0.2
+                        }
+                    },
+                    "CarbonateDeep": {
+                        "accumulationRate": 0.1,
+                        "model": {
+                            "modelType": "Gaussian",
+                            "stddevFactor": 0.05
+                        }
+                    }
+                }
+            }
+        },
+        "eustaticCurve": {
+            "format": "pyWellSFM.CurveData",
+            "version": "1.0",
+            "curve": {
+                "xAxisName": "Age",
+                "yAxisName": "Eustatism",
+                "interpolationMethod": "linear",
+                "data": [
+                    {"x": 0.0, "y": 0.0},
+                    {"x": 5.0, "y": 10.0},
+                    {"x": 10.0, "y": -5.0},
+                    {"x": 15.0, "y": 15.0},
+                    {"x": 20.0, "y": -10.0},
+                    {"x": 25.0, "y": 20.0},
+                    {"x": 30.0, "y": 0.0}
+                ]
+            }
+        }
+    },
+    "realizations": [
+        {
+            "format": "pyWellSFM.RealizationData",
+            "version": "1.0",
+            "well": {
+                "format": "pyWellSFM.WellData",
+                "version": "1.0",
+                "well": {
+                    "name": "ShallowWell",
+                    "location": {"x": 0.0, "y": 0.0, "z": 0.0},
+                    "depth": 100.0,
+                    "markers": [
+                        {
+                            "name": "Base",
+                            "depth": 90.0,
+                            "age": 30.0,
+                            "stratigraphicType": "Baselap"
+                        },
+                        {
+                            "name": "Mid",
+                            "depth": 50.0,
+                            "age": 10.0,
+                            "stratigraphicType": "Conform"
+                        }
+                    ],
+                    "striplogs": [
+                        {
+                            "name": "lithology",
+                            "intervals": [
+                                {
+                                    "top": 50.0,
+                                    "base": 60.0,
+                                    "lithology": "CarbonateIntermediate"
+                                },
+                                {
+                                    "top": 60.0,
+                                    "base": 70.0,
+                                    "lithology": "CarbonateShallow"
+                                },
+                                {
+                                    "top": 70.0,
+                                    "base": 85.0,
+                                    "lithology": "CarbonateDeep"
+                                },
+                                {
+                                    "top": 85.0,
+                                    "base": 90.0,
+                                    "lithology": "CarbonateIntermediate"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "initialBathymetry": 15.0,
+            "subsidenceCurve": {
+                "type": "cumulative",
+                "curve": {
+                    "format": "pyWellSFM.CurveData",
+                    "version": "1.0",
+                    "curve": {
+                        "xAxisName": "Age",
+                        "yAxisName": "Subsidence",
+                        "interpolationMethod": "linear",
+                        "data": [
+                            {"x": 0.0, "y": 25.0},
+                            {"x": 10.0, "y": 25.0},
+                            {"x": 20.0, "y": 15.0},
+                            {"x": 30.0, "y": 10.0}
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "format": "pyWellSFM.RealizationData",
+            "version": "1.0",
+            "well": {
+                "format": "pyWellSFM.WellData",
+                "version": "1.0",
+                "well": {
+                    "name": "DeepWell",
+                    "location": {"x": 1.0, "y": 0.0, "z": 0.0},
+                    "depth": 200.0,
+                    "markers": [
+                        {
+                            "name": "Base",
+                            "depth": 130.0,
+                            "age": 30.0,
+                            "stratigraphicType": "Baselap"
+                        },
+                        {
+                            "name": "Mid",
+                            "depth": 80.0,
+                            "age": 10.0,
+                            "stratigraphicType": "Conform"
+                        }
+                    ],
+                    "striplogs": [
+                        {
+                            "name": "lithology",
+                            "intervals": [
+                                {
+                                    "top": 80.0,
+                                    "base": 90.0,
+                                    "lithology": "CarbonateIntermediate"
+                                },
+                                {
+                                    "top": 90.0,
+                                    "base": 100.0,
+                                    "lithology": "CarbonateShallow"
+                                },
+                                {
+                                    "top": 100.0,
+                                    "base": 115.0,
+                                    "lithology": "CarbonateDeep"
+                                },
+                                {
+                                    "top": 115.0,
+                                    "base": 130.0,
+                                    "lithology": "CarbonateIntermediate"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "initialBathymetry": 20.0,
+            "subsidenceCurve": {
+                "type": "cumulative",
+                "curve": {
+                    "format": "pyWellSFM.CurveData",
+                    "version": "1.0",
+                    "curve": {
+                        "xAxisName": "Age",
+                        "yAxisName": "Subsidence",
+                        "interpolationMethod": "linear",
+                        "data": [
+                            {"x": 0.0, "y": 20.0},
+                            {"x": 10.0, "y": 20.0},
+                            {"x": 20.0, "y": 15.0},
+                            {"x": 30.0, "y": 5.0}
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+}
