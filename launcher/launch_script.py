@@ -11,7 +11,10 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
-_INSTALL_DIR = Path(__file__).resolve().parent
+if getattr(sys, "frozen", False):
+    _INSTALL_DIR = Path(sys.executable).resolve().parent
+else:
+    _INSTALL_DIR = Path(__file__).resolve().parent
 _VENV_DIR = _INSTALL_DIR / ".venv"
 _CONFIG_FILE = _INSTALL_DIR / "config.ini"
 _DEFAULT_PORT = 5006

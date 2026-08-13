@@ -62,15 +62,15 @@ class TestFindPyLauncher:
         mock_which: MagicMock,
         mock_run: MagicMock,
     ) -> None:
-        """Returns 'py -3.13' when py -3.13 reports Python 3.13."""
+        """Returns 'py -3' when py -3 reports Python 3.13."""
         mock_which.return_value = r"C:\Windows\py.exe"
         mock_run.return_value = MagicMock(
             returncode=0, stdout="Python 3.13.1\n"
         )
         result = _find_py_launcher_python()
-        assert result == "py -3.13"
+        assert result == "py -3"
         mock_run.assert_called_once_with(
-            ["py", "-3.13", "--version"],
+            ["py", "-3", "--version"],
             capture_output=True,
             text=True,
             timeout=10,
@@ -83,7 +83,7 @@ class TestFindPyLauncher:
         mock_which: MagicMock,
         mock_run: MagicMock,
     ) -> None:
-        """Returns None when py -3.13 reports a version below 3.13."""
+        """Returns None when all py flags report a version below 3.13."""
         mock_which.return_value = r"C:\Windows\py.exe"
         mock_run.return_value = MagicMock(
             returncode=0, stdout="Python 3.12.4\n"
@@ -103,7 +103,7 @@ class TestFindPyLauncher:
         mock_which: MagicMock,
         mock_run: MagicMock,
     ) -> None:
-        """Returns None when py -3.13 raises FileNotFoundError."""
+        """Returns None when py subprocess raises FileNotFoundError."""
         mock_which.return_value = r"C:\Windows\py.exe"
         mock_run.side_effect = FileNotFoundError
         assert _find_py_launcher_python() is None

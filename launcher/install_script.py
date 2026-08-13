@@ -13,7 +13,10 @@ from typing import NoReturn
 
 from launcher.find_python import find_python
 
-_INSTALL_DIR = Path(__file__).resolve().parent
+if getattr(sys, "frozen", False):
+    _INSTALL_DIR = Path(sys.executable).resolve().parent
+else:
+    _INSTALL_DIR = Path(__file__).resolve().parent
 _VENV_DIR = _INSTALL_DIR / ".venv"
 _WHEELS_DIR = _INSTALL_DIR / "wheels"
 
