@@ -5,7 +5,8 @@ from pywellsfmui.theme import Colors
 from pywellsfmui.views.status_bar import StatusBar
 
 
-def test_status_bar_defaults():
+def test_status_bar_defaults() -> None:
+    """Test default status bar badge values."""
     state = AppState()
     bar = StatusBar(state=state)
     html = bar._render_badges()
@@ -14,7 +15,8 @@ def test_status_bar_defaults():
     assert "Simulation: --" in html
 
 
-def test_status_bar_facies_loaded():
+def test_status_bar_facies_loaded() -> None:
+    """Test facies loaded badge."""
     state = AppState()
     state.facies_model = MagicMock()
     bar = StatusBar(state=state)
@@ -23,7 +25,8 @@ def test_status_bar_facies_loaded():
     assert Colors.SUCCESS in html
 
 
-def test_status_bar_wells_loaded():
+def test_status_bar_wells_loaded() -> None:
+    """Test wells loaded badge."""
     state = AppState()
     state.wells = [MagicMock(), MagicMock()]
     bar = StatusBar(state=state)
@@ -32,7 +35,8 @@ def test_status_bar_wells_loaded():
     assert Colors.SUCCESS in html
 
 
-def test_status_bar_simulation_done():
+def test_status_bar_simulation_done() -> None:
+    """Test simulation done badge."""
     state = AppState()
     state.simulation_outputs = MagicMock()
     bar = StatusBar(state=state)
@@ -41,7 +45,8 @@ def test_status_bar_simulation_done():
     assert Colors.SUCCESS in html
 
 
-def test_status_bar_reactivity():
+def test_status_bar_reactivity() -> None:
+    """Test status bar reacts to state changes."""
     state = AppState()
     bar = StatusBar(state=state)
     html_before = bar._render_badges()

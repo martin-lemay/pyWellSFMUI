@@ -11,10 +11,13 @@ from pywellsfmui.state.actions import Actions
 from pywellsfmui.state.app_state import AppState
 from pywellsfmui.state.io_manager import IOManager
 from pywellsfmui.state.message_store import MessageStore
-from pywellsfmui.views.visualization import VisualizationView
+from pywellsfmui.views.visualization import (
+    VisualizationView,
+)
 
 
 def _make_actions(state: AppState) -> Actions:
+    """Return Actions wired to the given state."""
     return Actions(
         state=state,
         io_manager=IOManager(),
@@ -37,16 +40,23 @@ def _make_mock_well(
     return w
 
 
-def test_no_outputs_shows_placeholder():
+def test_no_outputs_shows_placeholder() -> None:
+    """Test placeholder when no outputs exist."""
     state = AppState()
     actions = _make_actions(state)
     view = VisualizationView(state=state, actions=actions)
     panel = view._results_panel()
-    md_texts = [o.object for o in panel.objects if isinstance(o, pn.pane.Markdown)]
+    md_texts = [
+        o.object for o in panel.objects if isinstance(o, pn.pane.Markdown)
+    ]
     assert any("No simulation" in t for t in md_texts)
 
 
-def _make_dataset(n_real: int = 2, n_time: int = 5) -> xr.Dataset:
+def _make_dataset(
+    n_real: int = 2,
+    n_time: int = 5,
+) -> xr.Dataset:
+    """Create a mock simulation dataset."""
     times = np.linspace(30, 10, n_time)
     ds = xr.Dataset(
         {
@@ -80,7 +90,8 @@ def _make_dataset(n_real: int = 2, n_time: int = 5) -> xr.Dataset:
     return ds
 
 
-def test_results_panel_renders_plots():
+def test_results_panel_renders_plots() -> None:
+    """Test results panel renders plot rows."""
     state = AppState()
     actions = _make_actions(state)
     state.simulation_outputs = _make_dataset(n_real=2)
@@ -102,24 +113,34 @@ def test_results_panel_renders_plots():
     assert len(rows) == 2
 
 
-def test_wells_panel_no_outputs_shows_placeholder():
+def test_wells_panel_no_outputs_shows_placeholder() -> None:
+    """Test wells panel placeholder with no outputs."""
     state = AppState()
     actions = _make_actions(state)
     view = VisualizationView(state=state, actions=actions)
     panel = view._wells_panel()
-    md_texts = [o.object for o in panel.objects if isinstance(o, pn.pane.Markdown)]
+    md_texts = [
+        o.object for o in panel.objects if isinstance(o, pn.pane.Markdown)
+    ]
     assert any("No simulation" in t for t in md_texts)
 
 
-def test_wells_panel_renders_grouped_wells():
+def test_wells_panel_renders_grouped_wells() -> None:
+    """Test wells panel renders grouped well logs."""
     state = AppState()
     actions = _make_actions(state)
     state.simulation_outputs = _make_dataset(n_real=2)
 
     real1 = _make_mock_well("W1", discrete_logs={"Facies"})
     real2 = _make_mock_well("W2", discrete_logs={"Facies"})
-    sim1 = _make_mock_well("W1_sim_0", discrete_logs={"Facies", "MainElement"})
-    sim2 = _make_mock_well("W2_sim_1", discrete_logs={"Facies", "MainElement"})
+    sim1 = _make_mock_well(
+        "W1_sim_0",
+        discrete_logs={"Facies", "MainElement"},
+    )
+    sim2 = _make_mock_well(
+        "W2_sim_1",
+        discrete_logs={"Facies", "MainElement"},
+    )
 
     rd1 = MagicMock()
     rd1.well = real1
@@ -131,7 +152,9 @@ def test_wells_panel_renders_grouped_wells():
     view = VisualizationView(state=state, actions=actions)
     panel = view._wells_panel()
 
-    md_texts = [o.object for o in panel.objects if isinstance(o, pn.pane.Markdown)]
+    md_texts = [
+        o.object for o in panel.objects if isinstance(o, pn.pane.Markdown)
+    ]
     assert any("## Wells" in t for t in md_texts)
 
     # Controls row contains Select + Checkbox
@@ -142,11 +165,14 @@ def test_wells_panel_renders_grouped_wells():
     assert len(selects) == 1
     expected_options = sorted({"Facies", "MainElement"})
     assert selects[0].options == expected_options
-    checkboxes = [o for o in ctrl_row.objects if isinstance(o, pn.widgets.Checkbox)]
+    checkboxes = [
+        o for o in ctrl_row.objects if isinstance(o, pn.widgets.Checkbox)
+    ]
     assert len(checkboxes) == 2
 
 
-def test_wells_panel_dropdown_defaults_to_facies():
+def test_wells_panel_dropdown_defaults_to_facies() -> None:
+    """Test log dropdown defaults to Facies."""
     state = AppState()
     actions = _make_actions(state)
     state.simulation_outputs = _make_dataset(n_real=1)
@@ -175,8 +201,8 @@ def test_wells_panel_dropdown_defaults_to_facies():
     assert selects[0].value == "Facies"
 
 
-def test_wells_panel_preserves_user_selection():
-    """Log dropdown keeps user selection across rebuilds."""
+def test_wells_panel_preserves_user_selection() -> None:
+    """Log dropdown keeps user selection on rebuild."""
     state = AppState()
     actions = _make_actions(state)
     state.simulation_outputs = _make_dataset(n_real=1)

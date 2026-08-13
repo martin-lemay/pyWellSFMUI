@@ -24,13 +24,19 @@ class Message:
 
 
 class MessageStore(param.Parameterized):
-    """Collects messages from Actions and Python logging for display in the UI."""
+    """Collect messages from Actions and logging for the UI."""
 
     messages = param.List(default=[], doc="list[Message]")
 
     MAX_MESSAGES = 200
 
-    def add(self, level: MessageLevel, text: str, source: str | None = None) -> None:
+    def add(
+        self,
+        level: MessageLevel,
+        text: str,
+        source: str | None = None,
+    ) -> None:
+        """Add a message to the store."""
         msg = Message(
             timestamp=datetime.now(),
             level=level,
@@ -43,9 +49,11 @@ class MessageStore(param.Parameterized):
         self.messages = updated
 
     def clear(self) -> None:
+        """Remove all stored messages."""
         self.messages = []
 
     def as_logging_handler(self) -> logging.Handler:
+        """Return a logging.Handler that forwards to this store."""
         return _MessageStoreHandler(self)
 
 

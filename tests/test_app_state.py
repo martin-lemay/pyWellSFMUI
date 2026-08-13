@@ -1,7 +1,10 @@
+from typing import Any
+
 from pywellsfmui.state.app_state import AppState
 
 
-def test_app_state_defaults():
+def test_app_state_defaults() -> None:
+    """Test default state values."""
     state = AppState()
     assert state.facies_model is None
     assert state.wells == []
@@ -14,12 +17,12 @@ def test_app_state_defaults():
     assert state.simulation_outputs is None
 
 
-def test_app_state_set_facies_model():
+def test_app_state_set_facies_model() -> None:
     """Verify that setting a param triggers watchers."""
     state = AppState()
-    triggered = []
+    triggered: list[Any] = []
 
-    def on_change(*events):
+    def on_change(*events: Any) -> None:
         triggered.append(events)
 
     state.param.watch(on_change, ["facies_model"])

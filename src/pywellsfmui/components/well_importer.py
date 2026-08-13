@@ -1,7 +1,12 @@
+from __future__ import annotations
+
+import contextlib
 import logging
+from typing import Any
 
 import panel as pn
 import param
+from pywellsfm.model import Well
 
 from pywellsfmui.state.actions import Actions
 from pywellsfmui.state.app_state import AppState
@@ -21,8 +26,9 @@ class WellImporter(param.Parameterized):
         self,
         state: AppState,
         actions: Actions,
-        **params,
+        **params: Any,
     ) -> None:
+        """Initialize the well importer."""
         super().__init__(**params)
         self._state = state
         self._actions = actions
@@ -60,9 +66,11 @@ class WellImporter(param.Parameterized):
 
         self._refresh()
 
-    def _make_well_row(self, well) -> pn.Row:
-        """Build a row with well name, log selector, and
-        remove button for a single well."""
+    def _make_well_row(self, well: Well) -> pn.Row:
+        """Build a row for a single well.
+
+        Includes well name, log selector, and remove button.
+        """
         discrete = sorted(well.getDiscreteLogNames())
         current = self._state.well_facies_log_names.get(well.name, "")
 
@@ -72,8 +80,9 @@ class WellImporter(param.Parameterized):
             min_width=150,
         )
 
+        log_widget: pn.widgets.Select | pn.pane.Markdown
         if discrete:
-            log_select = pn.widgets.Select(
+            log_widget = pn.widgets.Select(
                 options=discrete,
                 value=current
                 if current in discrete
@@ -82,23 +91,23 @@ class WellImporter(param.Parameterized):
                 align="center",
             )
 
-            def _on_log_change(event, wn=well.name) -> None:
+            def _on_log_change(event: Any, wn: str = well.name) -> None:
                 if self._updating:
                     return
-                try:
+                with contextlib.suppress(ValueError):
                     self._actions.set_well_facies_log(wn, event.new)
-                except ValueError:
-                    pass
 
-            log_select.param.watch(_on_log_change, "value")
+            log_widget.param.watch(_on_log_change, "value")
         else:
-            log_select = pn.pane.Markdown(
+            log_widget = pn.pane.Markdown(
                 "*No litho log*",
                 align="center",
                 width=200,
             )
 
-        computed = self._state.well_accommodation_computed.get(well.name, False)
+        computed = self._state.well_accommodation_computed.get(
+            well.name, False
+        )
         computed_cb = pn.Column(
             pn.widgets.Checkbox(
                 label="",
@@ -122,17 +131,15 @@ class WellImporter(param.Parameterized):
             align="center",
         )
 
-        def _on_remove(event, wn=well.name) -> None:
-            try:
+        def _on_remove(event: Any, wn: str = well.name) -> None:
+            with contextlib.suppress(ValueError):
                 self._actions.remove_well(wn)
-            except ValueError:
-                pass
 
         remove_btn.on_click(_on_remove)
 
         return pn.Row(
             name_label,
-            log_select,
+            log_widget,
             computed_cb,
             remove_btn,
             sizing_mode="fixed",
@@ -170,7 +177,7 @@ class WellImporter(param.Parameterized):
         self._status.object = self._build_status_html()
         self._updating = False
 
-    def _on_file_loaded(self, event) -> None:
+    def _on_file_loaded(self, event: Any) -> None:
         if self._file_input.value is None:
             return
         try:
@@ -182,6 +189,7 @@ class WellImporter(param.Parameterized):
             logger.debug("Load well file failed", exc_info=True)
 
     def panel(self) -> pn.Column:
+        """Return the Panel layout for this widget."""
         title_row = pn.Row(
             pn.pane.Markdown(
                 "### Step 2 - Well Import",

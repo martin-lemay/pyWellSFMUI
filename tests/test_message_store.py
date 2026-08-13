@@ -3,17 +3,23 @@ from datetime import datetime
 
 import pytest
 
-from pywellsfmui.state.message_store import Message, MessageLevel, MessageStore
+from pywellsfmui.state.message_store import (
+    Message,
+    MessageLevel,
+    MessageStore,
+)
 
 
-def test_message_level_values():
+def test_message_level_values() -> None:
+    """Test MessageLevel enum values."""
     assert MessageLevel.DEBUG == "DEBUG"
     assert MessageLevel.INFO == "INFO"
     assert MessageLevel.WARNING == "WARNING"
     assert MessageLevel.ERROR == "ERROR"
 
 
-def test_message_creation():
+def test_message_creation() -> None:
+    """Test creating a Message instance."""
     msg = Message(
         timestamp=datetime(2026, 1, 1, 12, 0, 0),
         level=MessageLevel.INFO,
@@ -25,20 +31,26 @@ def test_message_creation():
     assert msg.source == "actions"
 
 
-def test_message_is_immutable():
+def test_message_is_immutable() -> None:
+    """Test Message is frozen (immutable)."""
     msg = Message(
         timestamp=datetime(2026, 1, 1),
         level=MessageLevel.INFO,
         text="hello",
         source=None,
     )
-    with pytest.raises(AttributeError):
+    with pytest.raises(AttributeError, match="cannot assign"):
         msg.text = "changed"
 
 
-def test_add_appends_message():
+def test_add_appends_message() -> None:
+    """Test adding a message to the store."""
     store = MessageStore()
-    store.add(MessageLevel.INFO, "test message", source="actions")
+    store.add(
+        MessageLevel.INFO,
+        "test message",
+        source="actions",
+    )
     assert len(store.messages) == 1
     msg = store.messages[0]
     assert msg.level == MessageLevel.INFO
@@ -47,23 +59,26 @@ def test_add_appends_message():
     assert isinstance(msg.timestamp, datetime)
 
 
-def test_add_without_source():
+def test_add_without_source() -> None:
+    """Test adding a message without source."""
     store = MessageStore()
     store.add(MessageLevel.WARNING, "no source")
     assert store.messages[0].source is None
 
 
-def test_add_caps_at_max_messages():
+def test_add_caps_at_max_messages() -> None:
+    """Test store caps at MAX_MESSAGES."""
     store = MessageStore()
     for i in range(250):
         store.add(MessageLevel.DEBUG, f"msg {i}")
     assert len(store.messages) == MessageStore.MAX_MESSAGES
-    # Oldest messages were dropped — first message should be msg 50
+    # Oldest messages were dropped
     assert store.messages[0].text == "msg 50"
     assert store.messages[-1].text == "msg 249"
 
 
-def test_clear():
+def test_clear() -> None:
+    """Test clearing the message store."""
     store = MessageStore()
     store.add(MessageLevel.INFO, "one")
     store.add(MessageLevel.INFO, "two")
@@ -71,7 +86,8 @@ def test_clear():
     assert store.messages == []
 
 
-def test_logging_handler_info():
+def test_logging_handler_info() -> None:
+    """Test logging handler captures INFO."""
     store = MessageStore()
     handler = store.as_logging_handler()
     logger = logging.getLogger("test.handler.info")
@@ -85,7 +101,8 @@ def test_logging_handler_info():
     logger.removeHandler(handler)
 
 
-def test_logging_handler_level_mapping():
+def test_logging_handler_level_mapping() -> None:
+    """Test logging handler maps levels correctly."""
     store = MessageStore()
     handler = store.as_logging_handler()
     logger = logging.getLogger("test.handler.levels")
@@ -104,6 +121,6 @@ def test_logging_handler_level_mapping():
         MessageLevel.INFO,
         MessageLevel.WARNING,
         MessageLevel.ERROR,
-        MessageLevel.ERROR,  # CRITICAL maps to ERROR
+        MessageLevel.ERROR,  # CRITICAL -> ERROR
     ]
     logger.removeHandler(handler)

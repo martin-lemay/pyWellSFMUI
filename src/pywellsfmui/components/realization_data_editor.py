@@ -6,14 +6,18 @@ right showing well properties, markers, and subsidence curve
 for the selected well.
 """
 
+from __future__ import annotations
+
+import contextlib
 import logging
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import panel as pn
 import param
-
+import plotly.graph_objects as go
 from pywellsfm.model import (
     Curve,
     Marker,
@@ -81,8 +85,9 @@ class RealizationDataEditor(param.Parameterized):
         self,
         state: AppState,
         actions: Actions,
-        **params,
+        **params: Any,
     ) -> None:
+        """Initialize the realization data editor."""
         super().__init__(**params)
         self._state = state
         self._actions = actions
@@ -309,7 +314,7 @@ class RealizationDataEditor(param.Parameterized):
         label = f"{count} well{'s' if count != 1 else ''}"
         return status_html(label, Colors.SUCCESS)
 
-    def _build_subsidence_plot(self):
+    def _build_subsidence_plot(self) -> go.Figure:
         """Build a Plotly figure for the selected well's subsidence."""
         curve = None
         y_title = "Subsidence (m)"
@@ -376,7 +381,7 @@ class RealizationDataEditor(param.Parameterized):
 
     # --- Well row builder ---
 
-    def _make_well_row(self, well) -> pn.Row:
+    def _make_well_row(self, well: Well) -> pn.Row:
         name = well.name
         ws = self._well_settings[name]
 
@@ -419,28 +424,26 @@ class RealizationDataEditor(param.Parameterized):
             align="center",
         )
 
-        def _on_select(event, wn=name) -> None:
+        def _on_select(event: Any, wn: str = name) -> None:
             self._selected_well = wn
             self._refresh_well_list()
             self._update_detail_panel()
 
-        def _on_bath_changed(event, wn=name) -> None:
+        def _on_bath_changed(event: Any, wn: str = name) -> None:
             if self._updating:
                 return
             self._well_settings[wn].bathymetry = event.new
             self._build_and_push_realization_data()
 
-        def _on_env_changed(event, wn=name) -> None:
+        def _on_env_changed(event: Any, wn: str = name) -> None:
             if self._updating:
                 return
             self._well_settings[wn].initial_env_name = event.new
             self._build_and_push_realization_data()
 
-        def _on_remove(event, wn=name) -> None:
-            try:
+        def _on_remove(event: Any, wn: str = name) -> None:
+            with contextlib.suppress(ValueError):
                 self._actions.remove_well(wn)
-            except ValueError:
-                pass
 
         name_btn.on_click(_on_select)
         bath_input.param.watch(_on_bath_changed, "value")
@@ -604,10 +607,10 @@ class RealizationDataEditor(param.Parameterized):
 
     # --- Callbacks ---
 
-    def _on_add_well(self, event) -> None:
+    def _on_add_well(self, event: Any) -> None:
         self._actions.add_empty_well()
 
-    def _on_file_loaded(self, event) -> None:
+    def _on_file_loaded(self, event: Any) -> None:
         if self._file_input.value is None:
             return
         try:
@@ -618,7 +621,7 @@ class RealizationDataEditor(param.Parameterized):
         except Exception:
             logger.debug("Load well file failed", exc_info=True)
 
-    def _on_name_changed(self, event) -> None:
+    def _on_name_changed(self, event: Any) -> None:
         if self._updating or self._selected_well is None:
             return
         old_name = self._selected_well
@@ -640,25 +643,25 @@ class RealizationDataEditor(param.Parameterized):
             self._name_input.value = old_name
             self._updating = False
 
-    def _on_coord_changed(self, event) -> None:
+    def _on_coord_changed(self, event: Any) -> None:
         if self._updating or self._selected_well is None:
             return
         self._actions.update_well_location(
             self._selected_well,
-            self._x_input.value,
-            self._y_input.value,
-            self._z_input.value,
+            float(self._x_input.value or 0),
+            float(self._y_input.value or 0),
+            float(self._z_input.value or 0),
         )
 
-    def _on_depth_changed(self, event) -> None:
+    def _on_depth_changed(self, event: Any) -> None:
         if self._updating or self._selected_well is None:
             return
         self._actions.update_well_depth(
             self._selected_well,
-            self._depth_input.value,
+            float(self._depth_input.value or 0),
         )
 
-    def _on_marker_edit(self, event) -> None:
+    def _on_marker_edit(self, event: Any) -> None:
         if self._updating:
             return
         df = self._marker_table.value
@@ -690,7 +693,9 @@ class RealizationDataEditor(param.Parameterized):
                     name=name_str,
                     depth=float(depth_val),
                     age=(float(age_val) if age_val is not None else np.nan),
-                    stratigraphicType=StratigraphicSurfaceType(type_val or "Unknown"),
+                    stratigraphicType=StratigraphicSurfaceType(
+                        type_val or "Unknown"
+                    ),
                 )
                 markers = list(well.getMarkers())
                 markers.append(new_marker)
@@ -700,7 +705,7 @@ class RealizationDataEditor(param.Parameterized):
         else:
             self._push_markers()
 
-    def _on_marker_remove(self, event) -> None:
+    def _on_marker_remove(self, event: Any) -> None:
         sel = self._marker_table.selection
         if not sel:
             return
@@ -718,7 +723,7 @@ class RealizationDataEditor(param.Parameterized):
             self._refresh_marker_table(well)
             self._subsidence_plot.object = self._build_subsidence_plot()
 
-    def _on_erase_curve(self, event) -> None:
+    def _on_erase_curve(self, event: Any) -> None:
         if self._selected_well is None:
             return
         ws = self._well_settings.get(self._selected_well)
@@ -729,7 +734,7 @@ class RealizationDataEditor(param.Parameterized):
         self._subsidence_plot.object = self._build_subsidence_plot()
         self._build_and_push_realization_data()
 
-    def _on_sub_type_changed(self, event) -> None:
+    def _on_sub_type_changed(self, event: Any) -> None:
         if self._updating or self._selected_well is None:
             return
         ws = self._well_settings.get(self._selected_well)

@@ -22,8 +22,12 @@ class AppState(param.Parameterized):
     )
 
     # Simulation inputs
-    accumulation_model = param.Parameter(default=None, doc="AccumulationModel instance")
-    eustatic_curve = param.Parameter(default=None, doc="Curve instance for eustasy")
+    accumulation_model = param.Parameter(
+        default=None, doc="AccumulationModel instance"
+    )
+    eustatic_curve = param.Parameter(
+        default=None, doc="Curve instance for eustasy"
+    )
     depositional_env_model = param.Parameter(
         default=None, doc="DepositionalEnvironmentModel instance"
     )

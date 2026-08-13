@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 
 import panel as pn
 import pytest
-
 from pywellsfm.model import Well
 from pywellsfm.model.enums import SubsidenceType
 
@@ -18,13 +17,13 @@ from pywellsfmui.state.message_store import MessageStore
 
 
 @pytest.fixture
-def state():
+def state() -> AppState:
     """Return a fresh AppState."""
     return AppState()
 
 
 @pytest.fixture
-def actions(state):
+def actions(state: AppState) -> Actions:
     """Return Actions wired to the given state."""
     return Actions(
         state=state,
@@ -34,39 +33,53 @@ def actions(state):
 
 
 @pytest.fixture
-def editor(state, actions):
+def editor(
+    state: AppState,
+    actions: Actions,
+) -> RealizationDataEditor:
     """Return a RealizationDataEditor instance."""
     return RealizationDataEditor(state=state, actions=actions)
 
 
 def _make_mock_well(name: str) -> MagicMock:
+    """Create a mock Well with the given name."""
     well = MagicMock(spec=Well)
     well.name = name
     return well
 
 
-def test_renders_panel(editor):
-    """panel() returns a pn.Column."""
+def test_renders_panel(
+    editor: RealizationDataEditor,
+) -> None:
+    """Test panel() returns a pn.Column."""
     panel = editor.panel()
     assert isinstance(panel, pn.Column)
 
 
-def test_empty_state_shows_no_wells(editor):
-    """Status HTML contains 'No wells' when well list is empty."""
+def test_empty_state_shows_no_wells(
+    editor: RealizationDataEditor,
+) -> None:
+    """Test status shows 'No wells' when empty."""
     html = editor._build_status_html()
     assert "No wells" in html
 
 
-def test_wells_from_state_appear_in_list(editor, state):
-    """Adding a well to state populates _well_settings."""
+def test_wells_from_state_appear_in_list(
+    editor: RealizationDataEditor,
+    state: AppState,
+) -> None:
+    """Test wells populate _well_settings."""
     w = _make_mock_well("Well-1")
     state.wells = [w]
     assert len(editor._well_settings) == 1
     assert "Well-1" in editor._well_settings
 
 
-def test_default_well_settings(editor, state):
-    """A freshly-added well gets default WellSettings values."""
+def test_default_well_settings(
+    editor: RealizationDataEditor,
+    state: AppState,
+) -> None:
+    """Test freshly-added well gets defaults."""
     w = _make_mock_well("Well-1")
     state.wells = [w]
     ws = editor._well_settings["Well-1"]
@@ -76,8 +89,11 @@ def test_default_well_settings(editor, state):
     assert ws.initial_env_name is None
 
 
-def test_removing_well_clears_settings(editor, state):
-    """Removing a well from state removes its entry from _well_settings."""
+def test_removing_well_clears_settings(
+    editor: RealizationDataEditor,
+    state: AppState,
+) -> None:
+    """Test removing well clears its settings."""
     w = _make_mock_well("Well-1")
     state.wells = [w]
     assert "Well-1" in editor._well_settings
@@ -85,8 +101,11 @@ def test_removing_well_clears_settings(editor, state):
     assert "Well-1" not in editor._well_settings
 
 
-def test_status_with_wells(editor, state):
-    """Status HTML mentions the well count when wells are present."""
+def test_status_with_wells(
+    editor: RealizationDataEditor,
+    state: AppState,
+) -> None:
+    """Test status shows well count."""
     state.wells = [_make_mock_well("A")]
     html = editor._build_status_html()
     assert "1 well" in html

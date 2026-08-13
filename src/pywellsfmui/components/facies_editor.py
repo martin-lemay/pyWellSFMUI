@@ -1,12 +1,15 @@
+from __future__ import annotations
+
+import contextlib
 import io
 import json
 import logging
 import math
+from typing import Any
 
 import pandas as pd
 import panel as pn
 import param
-
 from pywellsfm.model import (
     EnvironmentalFacies,
     FaciesCriteriaType,
@@ -44,8 +47,9 @@ class FaciesEditor(param.Parameterized):
         self,
         state: AppState,
         actions: Actions,
-        **params,
+        **params: Any,
     ) -> None:
+        """Initialize the facies editor."""
         super().__init__(**params)
         self._state = state
         self._actions = actions
@@ -170,8 +174,10 @@ class FaciesEditor(param.Parameterized):
     # --- DataFrame builders ---
 
     def _build_facies_df(self) -> pd.DataFrame:
-        """Build DataFrame from facies model plus
-        a placeholder row for adding new facies."""
+        """Build DataFrame from facies model.
+
+        Includes a placeholder row for adding new facies.
+        """
         rows: list[dict] = []
         model = self._state.facies_model
         if model is not None:
@@ -183,8 +189,10 @@ class FaciesEditor(param.Parameterized):
         return pd.DataFrame(rows)
 
     def _build_criteria_df(self) -> pd.DataFrame:
-        """Build DataFrame from selected facies criteria
-        plus a placeholder row for adding new ones."""
+        """Build DataFrame from selected facies criteria.
+
+        Includes a placeholder row for adding new ones.
+        """
         facies_name = self._get_selected_facies_name()
         rows: list[dict] = []
         if facies_name is not None and self._state.facies_model is not None:
@@ -241,7 +249,8 @@ class FaciesEditor(param.Parameterized):
         if count == 0:
             return status_html("Facies model: 0 facies", Colors.ERROR)
         all_have_criteria = all(
-            len(f.criteriaCollection.getAllCriteria()) > 0 for f in model.faciesSet
+            len(f.criteriaCollection.getAllCriteria()) > 0
+            for f in model.faciesSet
         )
         if all_have_criteria:
             return status_html(
@@ -291,10 +300,10 @@ class FaciesEditor(param.Parameterized):
 
     # --- Callbacks ---
 
-    def _on_new_model(self, event) -> None:
+    def _on_new_model(self, event: Any) -> None:
         self._actions.create_empty_facies_model()
 
-    def _on_file_loaded(self, event) -> None:
+    def _on_file_loaded(self, event: Any) -> None:
         if self._file_input.value is None:
             return
         try:
@@ -310,7 +319,7 @@ class FaciesEditor(param.Parameterized):
         json_bytes = json.dumps(data, indent=2).encode("utf-8")
         return io.BytesIO(json_bytes)
 
-    def _on_facies_table_edit(self, event) -> None:
+    def _on_facies_table_edit(self, event: Any) -> None:
         """Handle edits in the facies table."""
         if self._updating_facies:
             return
@@ -343,21 +352,19 @@ class FaciesEditor(param.Parameterized):
             # Existing rows: Name and Type are read-only
             self._facies_table.patch({column: [(row, event.old)]})
 
-    def _on_remove_facies(self, event) -> None:
+    def _on_remove_facies(self, event: Any) -> None:
         name = self._get_selected_facies_name()
         if name is None:
             return
-        try:
+        with contextlib.suppress(ValueError):
             self._actions.remove_facies(name)
-        except ValueError:
-            pass  # error logged by Actions
 
-    def _on_facies_selected(self, event) -> None:
+    def _on_facies_selected(self, event: Any) -> None:
         if self._updating_facies:
             return
         self._update_criteria_table()
 
-    def _on_crit_table_edit(self, event) -> None:
+    def _on_crit_table_edit(self, event: Any) -> None:
         """Handle edits in the criteria table."""
         if self._updating_crit:
             return
@@ -387,15 +394,13 @@ class FaciesEditor(param.Parameterized):
             if name_str == _NEW_CRITERION:
                 name_str = ""
             if name_str and min_val is not None and max_val is not None:
-                try:
+                with contextlib.suppress(ValueError):
                     self._actions.add_criteria(
                         facies_name,
                         name_str,
                         float(min_val),
                         float(max_val),
                     )
-                except ValueError:
-                    pass  # error logged by Actions
         else:
             # Editing an existing criterion
             crit_name = df.at[row, "Name"]
@@ -412,17 +417,15 @@ class FaciesEditor(param.Parameterized):
                     max_val = value
                 if min_val is None or max_val is None:
                     return
-                try:
+                with contextlib.suppress(ValueError):
                     self._actions.update_criteria(
                         facies_name,
                         str(crit_name),
                         float(min_val),
                         float(max_val),
                     )
-                except ValueError:
-                    pass  # error logged by Actions
 
-    def _on_remove_criterion(self, event) -> None:
+    def _on_remove_criterion(self, event: Any) -> None:
         facies_name = self._get_selected_facies_name()
         if not facies_name:
             return
@@ -435,10 +438,8 @@ class FaciesEditor(param.Parameterized):
         if row >= len(df) - 1:
             return
         crit_name = df.at[row, "Name"]
-        try:
+        with contextlib.suppress(ValueError):
             self._actions.remove_criteria(facies_name, str(crit_name))
-        except ValueError:
-            pass  # error logged by Actions
 
     def panel(self) -> pn.Column:
         """Assemble and return the full editor layout."""

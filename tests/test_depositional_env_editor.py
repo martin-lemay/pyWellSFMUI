@@ -1,7 +1,6 @@
 import numpy as np
 import panel as pn
 import pytest
-
 from pywellsfm.model import Curve
 from pywellsfm.model.EnvironmentConditionModel import (
     EnvironmentConditionModelCurve,
@@ -17,12 +16,14 @@ from pywellsfmui.state.message_store import MessageStore
 
 
 @pytest.fixture
-def state():
+def state() -> AppState:
+    """Return a fresh AppState."""
     return AppState()
 
 
 @pytest.fixture
-def actions(state):
+def actions(state: AppState) -> Actions:
+    """Return Actions wired to the given state."""
     return Actions(
         state=state,
         io_manager=IOManager(),
@@ -31,28 +32,47 @@ def actions(state):
 
 
 @pytest.fixture
-def editor(state, actions):
+def editor(
+    state: AppState,
+    actions: Actions,
+) -> DepositionalEnvEditor:
+    """Return a DepositionalEnvEditor instance."""
     return DepositionalEnvEditor(state=state, actions=actions)
 
 
-def test_editor_creates(editor):
+def test_editor_creates(
+    editor: DepositionalEnvEditor,
+) -> None:
+    """Test editor creates a panel."""
     panel = editor.panel()
     assert isinstance(panel, pn.Column)
 
 
-def test_editor_global_mode_default(editor, state):
+def test_editor_global_mode_default(
+    editor: DepositionalEnvEditor,
+    state: AppState,
+) -> None:
+    """Test default global mode state."""
     assert state.use_de_simulator is False
     panel = editor.panel()
     assert panel is not None
 
 
-def test_editor_switch_to_multi_env(editor, state, actions):
+def test_editor_switch_to_multi_env(
+    editor: DepositionalEnvEditor,
+    state: AppState,
+    actions: Actions,
+) -> None:
+    """Test switching to multi-environment mode."""
     actions.set_use_de_simulator(True)
     actions.create_de_model("carbonate_open_ramp")
     assert state.depositional_env_model is not None
 
 
-def test_add_curve_condition_global(state, actions):
+def test_add_curve_condition_global(
+    state: AppState,
+    actions: Actions,
+) -> None:
     """Add a Curve-type condition in global mode."""
     curve = Curve(
         "waterDepth",
@@ -74,8 +94,12 @@ def test_add_curve_condition_global(state, actions):
     assert model.relatedConditionName == "waterDepth"
 
 
-def test_editor_curve_detail_panel(editor, state, actions):
-    """Curve type shows related-condition input and curve editor."""
+def test_editor_curve_detail_panel(
+    editor: DepositionalEnvEditor,
+    state: AppState,
+    actions: Actions,
+) -> None:
+    """Curve type shows related-condition and editor."""
     editor.panel()
     actions.add_env_condition(
         "global",
@@ -90,6 +114,5 @@ def test_editor_curve_detail_panel(editor, state, actions):
     # Switch to Curve type
     editor._updating = False
     editor._cond_type_select.value = "Curve"
-    # The related-condition input should exist in the detail
     assert editor._cond_related_input is not None
     assert editor._cond_curve_editor is not None

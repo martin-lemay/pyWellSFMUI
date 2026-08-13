@@ -3,6 +3,7 @@ import io
 import logging
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 import panel as pn
 import param
@@ -10,14 +11,14 @@ import param
 from pywellsfmui.components.accumulation_editor import (
     AccumulationEditor,
 )
+from pywellsfmui.components.depositional_env_editor import (
+    DepositionalEnvEditor,
+)
 from pywellsfmui.components.eustatic_curve_editor import (
     EustaticCurveEditor,
 )
 from pywellsfmui.components.facies_editor import (
     FaciesEditor,
-)
-from pywellsfmui.components.depositional_env_editor import (
-    DepositionalEnvEditor,
 )
 from pywellsfmui.components.realization_data_editor import (
     RealizationDataEditor,
@@ -48,8 +49,9 @@ class SimulationView(param.Parameterized):
         actions: Actions,
         on_navigate: Callable[[str], None] | None = None,
         on_expand_log: Callable[[], None] | None = None,
-        **params,
+        **params: Any,
     ) -> None:
+        """Initialize the simulation view."""
         super().__init__(**params)
         self._state = state
         self._actions = actions
@@ -168,7 +170,7 @@ class SimulationView(param.Parameterized):
         self._run_btn.disabled = not self._is_run_ready()
         self._run_status.object = self._build_run_status()
 
-    async def _on_run_clicked(self, event: object) -> None:
+    async def _on_run_clicked(self, event: Any) -> None:
         """Handle Run Simulation click."""
         self._run_btn.disabled = True
         self._spinner.visible = True

@@ -73,6 +73,7 @@ select = [
     "D",    # pydocstyle
 ]
 ignore = [
+    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
     "W191",  # indentation contains tabs

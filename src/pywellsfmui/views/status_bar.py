@@ -1,3 +1,5 @@
+from typing import Any
+
 import panel as pn
 import param
 
@@ -8,21 +10,28 @@ from pywellsfmui.theme import Colors
 class StatusBar(param.Parameterized):
     """Reactive status badges for the header bar."""
 
-    def __init__(self, state: AppState, **params) -> None:
+    def __init__(self, state: AppState, **params: Any) -> None:
+        """Initialize the status bar."""
         super().__init__(**params)
         self._state = state
 
     def _render_badges(self) -> str:
-        facies_text = "loaded" if self._state.facies_model is not None else "--"
+        facies_text = (
+            "loaded" if self._state.facies_model is not None else "--"
+        )
         facies_color = (
-            Colors.SUCCESS if self._state.facies_model is not None else Colors.INACTIVE
+            Colors.SUCCESS
+            if self._state.facies_model is not None
+            else Colors.INACTIVE
         )
 
         well_count = len(self._state.wells)
         wells_text = str(well_count)
         wells_color = Colors.SUCCESS if well_count > 0 else Colors.INACTIVE
 
-        sim_text = "done" if self._state.simulation_outputs is not None else "--"
+        sim_text = (
+            "done" if self._state.simulation_outputs is not None else "--"
+        )
         sim_color = (
             Colors.SUCCESS
             if self._state.simulation_outputs is not None
@@ -38,7 +47,9 @@ class StatusBar(param.Parameterized):
         spans = []
         for label, value, color in badges:
             spans.append(
-                f'<span style="font-family:monospace; font-size:0.8em; margin-left:12px;">'
+                '<span style="font-family:monospace;'
+                " font-size:0.8em;"
+                ' margin-left:12px;">'
                 f'<span style="color:{color};">&#9679;</span> '
                 f"{label}: {value}</span>"
             )
@@ -54,10 +65,15 @@ class StatusBar(param.Parameterized):
         return pn.pane.HTML(
             self._render_badges(),
             sizing_mode="fixed",
-            styles={"color": "white", "display": "flex", "align-items": "center"},
+            styles={
+                "color": "white",
+                "display": "flex",
+                "align-items": "center",
+            },
         )
 
     def panel(self) -> pn.Row:
+        """Return the Panel layout for this component."""
         return pn.Row(
             self._badges_pane,
             sizing_mode="stretch_width",

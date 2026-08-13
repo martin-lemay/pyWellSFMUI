@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+from typing import Any
+
 import panel as pn
 import param
-
 from pywellsfm.model import Curve
 
 from pywellsfmui.components.curve_editor import CurveEditor
@@ -17,8 +20,9 @@ class EustaticCurveEditor(param.Parameterized):
         self,
         state: AppState,
         actions: Actions,
-        **params,
+        **params: Any,
     ) -> None:
+        """Initialize the eustatic curve editor."""
         super().__init__(**params)
         self._state = state
         self._actions = actions

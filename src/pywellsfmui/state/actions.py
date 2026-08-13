@@ -1,12 +1,13 @@
 import asyncio
+import contextlib
 import json
 import tempfile
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-
 from pywellsfm.io.accumulation_model_io import (
     accumulationModelToJsonObj,
     loadAccumulationModelFromJsonObj,
@@ -50,10 +51,11 @@ from pywellsfm.model.EnvironmentConditionModel import (
     EnvironmentConditionsModel,
 )
 from pywellsfm.simulator import (
-    DESimulatorParameters,
     DepositionalEnvironmentSimulator,
+    DESimulatorParameters,
     FSSimulator,
 )
+
 from pywellsfmui.state.app_state import AppState
 from pywellsfmui.state.io_manager import IOManager
 from pywellsfmui.state.message_store import MessageLevel, MessageStore
@@ -68,7 +70,7 @@ _FACIES_CONSTRUCTORS: dict[FaciesCriteriaType, type[Facies]] = {
 
 def _compute_one_well(
     well: Well,
-    facies_list: list,
+    facies_list: list[Any],
     facies_log_name: str,
 ) -> tuple[str, object]:
     """Compute accommodation for one well (picklable target).
@@ -79,7 +81,9 @@ def _compute_one_well(
     Raises:
         Exception on computation failure.
     """
-    calculator = AccommodationSpaceWellCalculator(well=well, faciesList=facies_list)
+    calculator = AccommodationSpaceWellCalculator(
+        well=well, faciesList=facies_list
+    )
     calculator.computeAccommodationCurve(
         faciesLogName=facies_log_name,
     )
@@ -99,6 +103,7 @@ class Actions:
         io_manager: IOManager,
         message_store: MessageStore,
     ) -> None:
+        """Initialize Actions with state, IO, and messages."""
         self._state = state
         self._io = io_manager
         self._messages = message_store
@@ -120,17 +125,23 @@ class Actions:
     # --- Facies Model ---
 
     def set_facies_model(self, model: FaciesModel) -> None:
+        """Set the facies model and reset accommodation."""
         self._state.facies_model = model
         self._reset_accommodation_results()
-        self._messages.add(MessageLevel.INFO, "Facies model set", source="actions")
+        self._messages.add(
+            MessageLevel.INFO, "Facies model set", source="actions"
+        )
 
     def load_facies_model(self, path: str) -> None:
+        """Load a facies model from a file path."""
         try:
             model = self._io.load_facies_model(path)
             self._state.facies_model = model
             self._reset_accommodation_results()
             self._messages.add(
-                MessageLevel.INFO, f"Loaded facies model from {path}", source="actions"
+                MessageLevel.INFO,
+                f"Loaded facies model from {path}",
+                source="actions",
             )
         except Exception as e:
             self._messages.add(
@@ -141,15 +152,20 @@ class Actions:
             raise
 
     def save_facies_model(self, path: str) -> None:
+        """Save the current facies model to a file."""
         if self._state.facies_model is None:
             self._messages.add(
-                MessageLevel.WARNING, "No facies model to save", source="actions"
+                MessageLevel.WARNING,
+                "No facies model to save",
+                source="actions",
             )
             raise ValueError("No facies model to save")
         try:
             self._io.save_facies_model(self._state.facies_model, path)
             self._messages.add(
-                MessageLevel.INFO, f"Saved facies model to {path}", source="actions"
+                MessageLevel.INFO,
+                f"Saved facies model to {path}",
+                source="actions",
             )
         except Exception as e:
             self._messages.add(
@@ -159,7 +175,9 @@ class Actions:
             )
             raise
 
-    def load_facies_model_from_bytes(self, data: bytes, filename: str = "") -> None:
+    def load_facies_model_from_bytes(
+        self, data: bytes, filename: str = ""
+    ) -> None:
         """Load a facies model from raw JSON bytes.
 
         Args:
@@ -209,6 +227,7 @@ class Actions:
         return faciesModelToJsonObj(self._state.facies_model)
 
     def create_empty_facies_model(self) -> None:
+        """Clear the facies model to start fresh."""
         self._state.facies_model = None
         self._reset_accommodation_results()
         self._messages.add(
@@ -218,6 +237,7 @@ class Actions:
         )
 
     def add_facies(self, name: str, criteria_type: FaciesCriteriaType) -> None:
+        """Add a facies to the model."""
         if (
             self._state.facies_model is not None
             and self._state.facies_model.getFaciesByName(name) is not None
@@ -252,6 +272,7 @@ class Actions:
         )
 
     def remove_facies(self, facies_name: str) -> None:
+        """Remove a facies from the model by name."""
         if self._state.facies_model is None:
             self._messages.add(
                 MessageLevel.WARNING,
@@ -311,16 +332,19 @@ class Actions:
         min_range: float,
         max_range: float,
     ) -> None:
+        """Add a criterion to a facies."""
         facies = self._get_facies_or_raise(facies_name)
         if facies.getCriteria(criteria_name) is not None:
+            msg = (
+                f"Criterion '{criteria_name}' already"
+                f" exists on facies '{facies_name}'"
+            )
             self._messages.add(
                 MessageLevel.WARNING,
-                f"Criterion '{criteria_name}' already exists on facies '{facies_name}'",
+                msg,
                 source="actions",
             )
-            raise ValueError(
-                f"Criterion '{criteria_name}' already exists on facies '{facies_name}'"
-            )
+            raise ValueError(msg)
         crit = FaciesCriteria(
             name=criteria_name,
             minRange=min_range,
@@ -337,16 +361,19 @@ class Actions:
         )
 
     def remove_criteria(self, facies_name: str, criteria_name: str) -> None:
+        """Remove a criterion from a facies."""
         facies = self._get_facies_or_raise(facies_name)
         if facies.getCriteria(criteria_name) is None:
+            msg = (
+                f"Criterion '{criteria_name}' not"
+                f" found on facies '{facies_name}'"
+            )
             self._messages.add(
                 MessageLevel.WARNING,
-                f"Criterion '{criteria_name}' not found on facies '{facies_name}'",
+                msg,
                 source="actions",
             )
-            raise ValueError(
-                f"Criterion '{criteria_name}' not found on facies '{facies_name}'"
-            )
+            raise ValueError(msg)
         facies.criteriaCollection.removeCriteria({criteria_name})
         self._state.facies_model = self._state.facies_model
         self._reset_accommodation_results()
@@ -363,17 +390,20 @@ class Actions:
         min_range: float,
         max_range: float,
     ) -> None:
+        """Update min/max range of a criterion."""
         facies = self._get_facies_or_raise(facies_name)
         crit = facies.getCriteria(criteria_name)
         if crit is None:
+            msg = (
+                f"Criterion '{criteria_name}' not"
+                f" found on facies '{facies_name}'"
+            )
             self._messages.add(
                 MessageLevel.WARNING,
-                f"Criterion '{criteria_name}' not found on facies '{facies_name}'",
+                msg,
                 source="actions",
             )
-            raise ValueError(
-                f"Criterion '{criteria_name}' not found on facies '{facies_name}'"
-            )
+            raise ValueError(msg)
         crit.minRange = min_range
         crit.maxRange = max_range
         self._state.facies_model = self._state.facies_model
@@ -387,6 +417,7 @@ class Actions:
     # --- Wells ---
 
     def load_well(self, path: str) -> None:
+        """Load a well from a file path."""
         try:
             well = self._io.load_well(path)
             self._state.wells = [*self._state.wells, well]
@@ -397,11 +428,14 @@ class Actions:
             )
         except Exception as e:
             self._messages.add(
-                MessageLevel.ERROR, f"Failed to load well: {e}", source="actions"
+                MessageLevel.ERROR,
+                f"Failed to load well: {e}",
+                source="actions",
             )
             raise
 
     def remove_well(self, well_name: str) -> None:
+        """Remove a well and its associated state."""
         new_wells = [w for w in self._state.wells if w.name != well_name]
         if len(new_wells) == len(self._state.wells):
             self._messages.add(
@@ -524,7 +558,8 @@ class Actions:
             ):
                 self._messages.add(
                     MessageLevel.WARNING,
-                    "Imported well already exists. Check for the name and coordinates",
+                    "Imported well already exists."
+                    " Check for the name and coordinates",
                     source="actions",
                 )
                 return
@@ -542,6 +577,7 @@ class Actions:
         )
 
     def set_well_facies_log(self, well_name: str, log_name: str) -> None:
+        """Set the active facies log for a well."""
         well = next(
             (w for w in self._state.wells if w.name == well_name),
             None,
@@ -559,7 +595,9 @@ class Actions:
                 f"Log '{log_name}' not found on well '{well_name}'",
                 source="actions",
             )
-            raise ValueError(f"Log '{log_name}' not found on well '{well_name}'")
+            raise ValueError(
+                f"Log '{log_name}' not found on well '{well_name}'"
+            )
         log_names = dict(self._state.well_facies_log_names)
         log_names[well_name] = log_name
         self._state.well_facies_log_names = log_names
@@ -592,7 +630,7 @@ class Actions:
 
         for well in self._state.wells:
             log_name = self._state.well_facies_log_names.get(well.name, "")
-            try:
+            with contextlib.suppress(Exception):
                 self.compute_accommodation(
                     well_name=well.name,
                     facies_log_name=log_name,
@@ -600,8 +638,6 @@ class Actions:
                 computed = dict(self._state.well_accommodation_computed)
                 computed[well.name] = True
                 self._state.well_accommodation_computed = computed
-            except Exception:
-                pass  # error already logged by compute_accommodation
 
     async def compute_all_accommodation_async(self) -> None:
         """Async version: compute accommodation in parallel.
@@ -656,11 +692,12 @@ class Actions:
 
         results = dict(self._state.accommodation_results)
         computed = dict(self._state.well_accommodation_computed)
-        for item, (well, _, _) in zip(raw, tasks):
+        for item, (well, _, _) in zip(raw, tasks, strict=False):
             if isinstance(item, Exception):
                 self._messages.add(
                     MessageLevel.ERROR,
-                    f"Failed to compute accommodation for '{well.name}': {item}",
+                    f"Failed to compute accommodation"
+                    f" for '{well.name}': {item}",
                     source="actions",
                 )
             else:
@@ -683,7 +720,10 @@ class Actions:
         to_marker_name: str | None = None,
         accommodation_at_base: float = 0.0,
     ) -> None:
-        well = next((w for w in self._state.wells if w.name == well_name), None)
+        """Compute accommodation for a single well."""
+        well = next(
+            (w for w in self._state.wells if w.name == well_name), None
+        )
         if well is None:
             self._messages.add(
                 MessageLevel.WARNING,
@@ -704,7 +744,8 @@ class Actions:
             to_marker = None
             if from_marker_name:
                 from_marker = next(
-                    (m for m in well.markers if m.name == from_marker_name), None
+                    (m for m in well.markers if m.name == from_marker_name),
+                    None,
                 )
             if to_marker_name:
                 to_marker = next(
@@ -739,12 +780,14 @@ class Actions:
     # --- Accumulation Model ---
 
     def set_accumulation_model(self, model: AccumulationModel) -> None:
+        """Set the accumulation model."""
         self._state.accumulation_model = model
         self._messages.add(
             MessageLevel.INFO, "Accumulation model set", source="actions"
         )
 
     def load_accumulation_model(self, path: str) -> None:
+        """Load an accumulation model from a file."""
         try:
             model = self._io.load_accumulation_model(path)
             self._state.accumulation_model = model
@@ -762,6 +805,7 @@ class Actions:
             raise
 
     def save_accumulation_model(self, path: str) -> None:
+        """Save the accumulation model to a file."""
         if self._state.accumulation_model is None:
             self._messages.add(
                 MessageLevel.WARNING,
@@ -770,7 +814,9 @@ class Actions:
             )
             raise ValueError("No accumulation model to save")
         try:
-            self._io.save_accumulation_model(self._state.accumulation_model, path)
+            self._io.save_accumulation_model(
+                self._state.accumulation_model, path
+            )
             self._messages.add(
                 MessageLevel.INFO,
                 f"Saved accumulation model to {path}",
@@ -845,7 +891,7 @@ class Actions:
 
     # --- Accumulation Model Elements ---
 
-    def _get_accum_element_or_raise(self, element_name: str):
+    def _get_accum_element_or_raise(self, element_name: str) -> Any:
         """Get element from accumulation model or raise."""
         if self._state.accumulation_model is None:
             self._messages.add(
@@ -871,7 +917,9 @@ class Actions:
         is set. Raises ValueError if element already exists.
         """
         if self._state.accumulation_model is None:
-            self._state.accumulation_model = AccumulationModel(name="New Model")
+            self._state.accumulation_model = AccumulationModel(
+                name="New Model"
+            )
         model = self._state.accumulation_model
         if model.getElementModel(element_name) is not None:
             self._messages.add(
@@ -909,7 +957,9 @@ class Actions:
             source="actions",
         )
 
-    def update_accumulation_element_rate(self, element_name: str, rate: float) -> None:
+    def update_accumulation_element_rate(
+        self, element_name: str, rate: float
+    ) -> None:
         """Update the accumulation rate of an element.
 
         Raises:
@@ -950,7 +1000,9 @@ class Actions:
             source="actions",
         )
 
-    def set_accumulation_element_type(self, element_name: str, model_type: str) -> None:
+    def set_accumulation_element_type(
+        self, element_name: str, model_type: str
+    ) -> None:
         """Replace element with a new type, preserving rate.
 
         Args:
@@ -1005,7 +1057,9 @@ class Actions:
                 f"Element '{element_name}' is not EnvironmentOptimum",
                 source="actions",
             )
-            raise ValueError(f"Element '{element_name}' is not EnvironmentOptimum")
+            raise ValueError(
+                f"Element '{element_name}' is not EnvironmentOptimum"
+            )
         return elem
 
     def _get_curve_or_raise(
@@ -1020,14 +1074,16 @@ class Actions:
         elem = self._get_optimum_element_or_raise(element_name)
         curve = elem.getAccumulationCurve(env_factor_name)
         if curve is None:
+            msg = (
+                f"Curve '{env_factor_name}' not found"
+                f" on element '{element_name}'"
+            )
             self._messages.add(
                 MessageLevel.WARNING,
-                f"Curve '{env_factor_name}' not found on element '{element_name}'",
+                msg,
                 source="actions",
             )
-            raise ValueError(
-                f"Curve '{env_factor_name}' not found on element '{element_name}'"
-            )
+            raise ValueError(msg)
         return elem, curve
 
     def add_accumulation_curve(
@@ -1038,14 +1094,16 @@ class Actions:
         """Add a reduction curve with default points."""
         elem = self._get_optimum_element_or_raise(element_name)
         if elem.getAccumulationCurve(env_factor_name) is not None:
+            msg = (
+                f"Curve '{env_factor_name}' already"
+                f" exists on element '{element_name}'"
+            )
             self._messages.add(
                 MessageLevel.WARNING,
-                f"Curve '{env_factor_name}' already exists on element '{element_name}'",
+                msg,
                 source="actions",
             )
-            raise ValueError(
-                f"Curve '{env_factor_name}' already exists on element '{element_name}'"
-            )
+            raise ValueError(msg)
         curve = AccumulationCurve(
             envFactorName=env_factor_name,
             abscissa=np.array([0.0, 1.0]),
@@ -1069,14 +1127,16 @@ class Actions:
         """Add a reduction curve with given data points."""
         elem = self._get_optimum_element_or_raise(element_name)
         if elem.getAccumulationCurve(env_factor_name) is not None:
+            msg = (
+                f"Curve '{env_factor_name}' already"
+                f" exists on element '{element_name}'"
+            )
             self._messages.add(
                 MessageLevel.WARNING,
-                f"Curve '{env_factor_name}' already exists on element '{element_name}'",
+                msg,
                 source="actions",
             )
-            raise ValueError(
-                f"Curve '{env_factor_name}' already exists on element '{element_name}'"
-            )
+            raise ValueError(msg)
         curve = AccumulationCurve(
             envFactorName=env_factor_name,
             abscissa=abscissa,
@@ -1104,7 +1164,8 @@ class Actions:
         self._state.accumulation_model = self._state.accumulation_model
         self._messages.add(
             MessageLevel.INFO,
-            f"Loaded data for curve '{env_factor_name}' on element '{element_name}'",
+            f"Loaded data for curve '{env_factor_name}'"
+            f" on element '{element_name}'",
             source="actions",
         )
 
@@ -1187,17 +1248,22 @@ class Actions:
         self._state.accumulation_model = self._state.accumulation_model
         self._messages.add(
             MessageLevel.INFO,
-            f"Updated point {index} on curve '{env_factor_name}' to ({x}, {y})",
+            f"Updated point {index} on curve"
+            f" '{env_factor_name}' to ({x}, {y})",
             source="actions",
         )
 
     # --- Eustatic Curve ---
 
     def set_eustatic_curve(self, curve: Curve) -> None:
+        """Set the eustatic curve."""
         self._state.eustatic_curve = curve
-        self._messages.add(MessageLevel.INFO, "Eustatic curve set", source="actions")
+        self._messages.add(
+            MessageLevel.INFO, "Eustatic curve set", source="actions"
+        )
 
     def load_eustatic_curve(self, path: str) -> None:
+        """Load an eustatic curve from a file."""
         try:
             curves = self._io.load_curves(path)
             if not curves:
@@ -1228,6 +1294,7 @@ class Actions:
         ages: npt.NDArray[np.float64],
         values: npt.NDArray[np.float64],
     ) -> None:
+        """Create a new eustatic curve from arrays."""
         curve = Curve("Age", "Eustatism", ages, values, "linear")
         self._state.eustatic_curve = curve
         self._messages.add(
@@ -1237,6 +1304,7 @@ class Actions:
         )
 
     def clear_eustatic_curve(self) -> None:
+        """Clear the eustatic curve."""
         self._state.eustatic_curve = None
         self._messages.add(
             MessageLevel.INFO,
@@ -1244,7 +1312,10 @@ class Actions:
             source="actions",
         )
 
-    def update_eustatic_curve_point(self, index: int, age: float, value: float) -> None:
+    def update_eustatic_curve_point(
+        self, index: int, age: float, value: float
+    ) -> None:
+        """Update a point on the eustatic curve."""
         curve = self._state.eustatic_curve
         if curve is None:
             raise ValueError("No eustatic curve")
@@ -1260,6 +1331,7 @@ class Actions:
         )
 
     def add_eustatic_curve_point(self, age: float, value: float) -> None:
+        """Add a point to the eustatic curve."""
         curve = self._state.eustatic_curve
         if curve is None:
             self.create_eustatic_curve(np.array([age]), np.array([value]))
@@ -1273,6 +1345,7 @@ class Actions:
         )
 
     def remove_eustatic_curve_point(self, index: int) -> None:
+        """Remove a point from the eustatic curve by index."""
         curve = self._state.eustatic_curve
         if curve is None:
             raise ValueError("No eustatic curve")
@@ -1296,6 +1369,7 @@ class Actions:
             )
 
     def save_eustatic_curve(self, path: str) -> None:
+        """Save the eustatic curve to a file."""
         if self._state.eustatic_curve is None:
             self._messages.add(
                 MessageLevel.WARNING,
@@ -1320,7 +1394,10 @@ class Actions:
 
     # --- Depositional Environment Model ---
 
-    def set_depositional_env_model(self, model: DepositionalEnvironmentModel) -> None:
+    def set_depositional_env_model(
+        self, model: DepositionalEnvironmentModel
+    ) -> None:
+        """Set the depositional environment model."""
         self._state.depositional_env_model = model
         self._messages.add(
             MessageLevel.INFO,
@@ -1329,6 +1406,7 @@ class Actions:
         )
 
     def load_depositional_env_model(self, path: str) -> None:
+        """Load a depositional environment model from a file."""
         try:
             model = self._io.load_depositional_env_model(path)
             self._state.depositional_env_model = model
@@ -1346,6 +1424,7 @@ class Actions:
             raise
 
     def save_depositional_env_model(self, path: str) -> None:
+        """Save the depositional environment model to a file."""
         if self._state.depositional_env_model is None:
             self._messages.add(
                 MessageLevel.WARNING,
@@ -1373,6 +1452,7 @@ class Actions:
     # --- Simulator Parameters ---
 
     def set_simulator_params(self, params: FSSimulatorParameters) -> None:
+        """Set the FS simulator parameters."""
         self._state.simulator_params = params
         self._messages.add(
             MessageLevel.INFO, "Simulator parameters set", source="actions"
@@ -1380,8 +1460,9 @@ class Actions:
 
     def set_realization_data_list(
         self,
-        data_list: list,
+        data_list: list[Any],
     ) -> None:
+        """Set the realization data list for simulation."""
         self._state.realization_data_list = list(data_list)
         n = len(data_list)
         self._messages.add(
@@ -1393,6 +1474,7 @@ class Actions:
     # --- Simulation ---
 
     def run_simulation(self) -> None:
+        """Run the forward stratigraphic simulation."""
         if self._state.accumulation_model is None:
             self._messages.add(
                 MessageLevel.WARNING,
@@ -1461,7 +1543,9 @@ class Actions:
             sc = simulator.scenario
             self._state.accumulation_model = sc.accumulationModel
             self._state.eustatic_curve = sc.eustaticCurve
-            self._state.depositional_env_model = sc.depositionalEnvironmentModel
+            self._state.depositional_env_model = (
+                sc.depositionalEnvironmentModel
+            )
             self._state.facies_model = sc.faciesModel
             rd_list = list(simulator.realizationDataList)
             self._state.realization_data_list = rd_list
@@ -1469,7 +1553,9 @@ class Actions:
             self._state.simulator_params = simulator.params
             self._state.use_de_simulator = simulator.use_deSimulator
             if simulator.deSimulator_weights is not None:
-                self._state.de_simulator_weights = dict(simulator.deSimulator_weights)
+                self._state.de_simulator_weights = dict(
+                    simulator.deSimulator_weights
+                )
             if simulator.deSimulator_params is not None:
                 self._state.de_simulator_params = simulator.deSimulator_params
 
@@ -1498,7 +1584,9 @@ class Actions:
                 name="simulation",
                 accumulationModel=(self._state.accumulation_model),
                 eustaticCurve=self._state.eustatic_curve,
-                depositionalEnvironmentModel=(self._state.depositional_env_model),
+                depositionalEnvironmentModel=(
+                    self._state.depositional_env_model
+                ),
                 faciesModel=self._state.facies_model,
             )
             params = self._state.simulator_params or FSSimulatorParameters()
@@ -1542,6 +1630,7 @@ class Actions:
             raise
 
     def clear_simulation_outputs(self) -> None:
+        """Clear simulation outputs from state."""
         self._state.simulation_outputs = None
         self._messages.add(
             MessageLevel.INFO, "Simulation outputs cleared", source="actions"
@@ -1555,9 +1644,11 @@ class Actions:
         if enabled:
             self._state.global_env_conditions = None
             if self._state.depositional_env_model is None:
-                self._state.depositional_env_model = DepositionalEnvironmentModel(
-                    name="New Model",
-                    environments=[],
+                self._state.depositional_env_model = (
+                    DepositionalEnvironmentModel(
+                        name="New Model",
+                        environments=[],
+                    )
                 )
         else:
             self._state.depositional_env_model = None
@@ -1598,7 +1689,9 @@ class Actions:
         else:
             model = cls()
         self._state.depositional_env_model = model
-        self._state.de_simulator_weights = {env.name: 1.0 for env in model.environments}
+        self._state.de_simulator_weights = {
+            env.name: 1.0 for env in model.environments
+        }
         self._state.de_simulator_params = None
         self._messages.add(
             MessageLevel.INFO,
@@ -1615,7 +1708,9 @@ class Actions:
         try:
             obj = json.loads(data)
             sim = self._io.load_de_simulation_from_json_obj(obj)
-            self._state.depositional_env_model = sim.depositionalEnvironmentModel
+            self._state.depositional_env_model = (
+                sim.depositionalEnvironmentModel
+            )
             self._state.de_simulator_weights = dict(sim._weights)
             self._state.de_simulator_params = sim.params
             self._messages.add(
@@ -1814,7 +1909,7 @@ class Actions:
         self,
         env_name: str,
         model_type: str,
-        **params,
+        **params: Any,
     ) -> None:
         """Set the waterDepth model for an environment."""
         model = self._get_de_model()
@@ -1832,7 +1927,9 @@ class Actions:
     # --- Depositional Environment: Conditions ---
 
     _CONDITION_MODEL_FACTORIES = {
-        "Constant": lambda name, p: EnvironmentConditionModelConstant(name, p["value"]),
+        "Constant": lambda name, p: EnvironmentConditionModelConstant(
+            name, p["value"]
+        ),
         "Uniform": lambda name, p: EnvironmentConditionModelUniform(
             name,
             p["minValue"],
@@ -1861,8 +1958,8 @@ class Actions:
         self,
         cond_name: str,
         model_type: str,
-        params: dict,
-    ):
+        params: dict[str, Any],
+    ) -> Any:
         """Build an EnvironmentConditionModel from type + params."""
         factory = self._CONDITION_MODEL_FACTORIES.get(model_type)
         if factory is None:
@@ -1881,7 +1978,9 @@ class Actions:
         """
         if env_name == "global":
             if self._state.global_env_conditions is None:
-                self._state.global_env_conditions = EnvironmentConditionsModel()
+                self._state.global_env_conditions = (
+                    EnvironmentConditionsModel()
+                )
             return self._state.global_env_conditions
         model = self._get_de_model()
         env = model.getEnvironmentByName(env_name)
@@ -1894,7 +1993,7 @@ class Actions:
         env_name: str,
         cond_name: str,
         model_type: str,
-        **params,
+        **params: Any,
     ) -> None:
         """Add an environment condition to an environment."""
         cond_model = self._build_condition_model(
@@ -1914,7 +2013,7 @@ class Actions:
         env_name: str,
         cond_name: str,
         model_type: str,
-        **params,
+        **params: Any,
     ) -> None:
         """Update an existing environment condition."""
         cond_model = self._build_condition_model(
@@ -1962,7 +2061,7 @@ class Actions:
         weights[env_name] = weight
         self._state.de_simulator_weights = weights
 
-    def set_de_simulator_params(self, **params) -> None:
+    def set_de_simulator_params(self, **params: Any) -> None:
         """Set DE simulator parameters from keyword args."""
         self._state.de_simulator_params = DESimulatorParameters(
             **params,

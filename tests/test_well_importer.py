@@ -1,6 +1,7 @@
+from unittest.mock import MagicMock
+
 import panel as pn
 import pytest
-from unittest.mock import MagicMock
 
 from pywellsfmui.components.well_importer import (
     WellImporter,
@@ -11,7 +12,11 @@ from pywellsfmui.state.io_manager import IOManager
 from pywellsfmui.state.message_store import MessageStore
 
 
-def _make_mock_well(name, discrete_logs=None):
+def _make_mock_well(
+    name: str,
+    discrete_logs: list[str] | None = None,
+) -> MagicMock:
+    """Create a mock well with discrete log names."""
     well = MagicMock()
     well.name = name
     well.getDiscreteLogNames.return_value = set(discrete_logs or [])
@@ -19,12 +24,14 @@ def _make_mock_well(name, discrete_logs=None):
 
 
 @pytest.fixture
-def state():
+def state() -> AppState:
+    """Return a fresh AppState."""
     return AppState()
 
 
 @pytest.fixture
-def actions(state):
+def actions(state: AppState) -> Actions:
+    """Return Actions wired to the given state."""
     return Actions(
         state=state,
         io_manager=IOManager(),
@@ -33,17 +40,28 @@ def actions(state):
 
 
 @pytest.fixture
-def importer(state, actions):
+def importer(
+    state: AppState,
+    actions: Actions,
+) -> WellImporter:
+    """Return a WellImporter instance."""
     return WellImporter(state=state, actions=actions)
 
 
-def test_renders_empty_state(importer):
+def test_renders_empty_state(
+    importer: WellImporter,
+) -> None:
+    """Test importer renders with no wells."""
     panel = importer.panel()
     assert isinstance(panel, pn.Column)
     assert "No wells loaded" in importer._status.object
 
 
-def test_renders_with_wells(importer, state):
+def test_renders_with_wells(
+    importer: WellImporter,
+    state: AppState,
+) -> None:
+    """Test importer renders with loaded wells."""
     w1 = _make_mock_well("Well-1", ["lithology", "facies"])
     w2 = _make_mock_well("Well-2", ["litho"])
     state.wells = [w1, w2]
@@ -58,7 +76,11 @@ def test_renders_with_wells(importer, state):
     assert "2 wells loaded" in importer._status.object
 
 
-def test_renders_single_well_status(importer, state):
+def test_renders_single_well_status(
+    importer: WellImporter,
+    state: AppState,
+) -> None:
+    """Test status for a single well."""
     w = _make_mock_well("Well-1", ["lithology"])
     state.wells = [w]
     state.well_facies_log_names = {"Well-1": "lithology"}
@@ -66,7 +88,12 @@ def test_renders_single_well_status(importer, state):
     assert "1 well loaded" in importer._status.object
 
 
-def test_remove_well_updates_list(importer, state, actions):
+def test_remove_well_updates_list(
+    importer: WellImporter,
+    state: AppState,
+    actions: Actions,
+) -> None:
+    """Test removing a well updates the list."""
     w1 = _make_mock_well("Well-1", ["lithology"])
     w2 = _make_mock_well("Well-2", ["litho"])
     state.wells = [w1, w2]
@@ -84,7 +111,11 @@ def test_remove_well_updates_list(importer, state, actions):
     assert len(importer._well_list.objects) == 2
 
 
-def test_per_well_log_options(importer, state):
+def test_per_well_log_options(
+    importer: WellImporter,
+    state: AppState,
+) -> None:
+    """Test per-well log dropdown options."""
     w1 = _make_mock_well("Well-1", ["lithology"])
     w2 = _make_mock_well("Well-2", ["facies", "litho", "zones"])
     state.wells = [w1, w2]
@@ -100,10 +131,18 @@ def test_per_well_log_options(importer, state):
     assert select_w1.options == ["lithology"]
     select_w2 = rows[2][1]
     assert isinstance(select_w2, pn.widgets.Select)
-    assert select_w2.options == ["facies", "litho", "zones"]
+    assert select_w2.options == [
+        "facies",
+        "litho",
+        "zones",
+    ]
 
 
-def test_checkbox_shows_computed_status(importer, state):
+def test_checkbox_shows_computed_status(
+    importer: WellImporter,
+    state: AppState,
+) -> None:
+    """Test checkbox reflects computed status."""
     w = _make_mock_well("Well-1", ["lithology"])
     state.wells = [w]
     state.well_facies_log_names = {"Well-1": "lithology"}
@@ -111,7 +150,6 @@ def test_checkbox_shows_computed_status(importer, state):
     importer._refresh()
     rows = importer._well_list.objects
     # Row 0 is header; well row at index 1
-    # Checkbox is wrapped in a Column for centering
     cb_container = rows[1][2]
     checkbox = cb_container[0]
     assert isinstance(checkbox, pn.widgets.Checkbox)
@@ -119,7 +157,11 @@ def test_checkbox_shows_computed_status(importer, state):
     assert checkbox.disabled is True
 
 
-def test_checkbox_default_false(importer, state):
+def test_checkbox_default_false(
+    importer: WellImporter,
+    state: AppState,
+) -> None:
+    """Test checkbox defaults to False."""
     w = _make_mock_well("Well-1", ["lithology"])
     state.wells = [w]
     state.well_facies_log_names = {"Well-1": "lithology"}

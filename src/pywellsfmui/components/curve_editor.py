@@ -1,12 +1,12 @@
 import io
 import json
 from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import panel as pn
 import param
-
 from pywellsfm.model import Curve
 
 _COL_X = "X"
@@ -23,8 +23,9 @@ class CurveEditor(param.Parameterized):
         value_title: str,
         file_label: str,
         on_curve_changed: Callable[[Curve | None], None],
-        **params,
+        **params: object,
     ) -> None:
+        """Initialize the curve editor."""
         super().__init__(**params)
         self._age_title = age_title
         self._value_title = value_title
@@ -140,6 +141,7 @@ class CurveEditor(param.Parameterized):
             for age, val in zip(
                 self._curve._abscissa,
                 self._curve._ordinate,
+                strict=False,
             ):
                 rows.append({_COL_X: float(age), _COL_Y: float(val)})
         rows.append({_COL_X: _NEW_POINT, _COL_Y: None})
@@ -200,12 +202,9 @@ class CurveEditor(param.Parameterized):
                 ages.append(float(val))
         if is_new:
             ages.append(age)
-        for i in range(1, len(ages)):
-            if ages[i] <= ages[i - 1]:
-                return False
-        return True
+        return all(ages[i] > ages[i - 1] for i in range(1, len(ages)))
 
-    def _revert_edit(self, event) -> None:
+    def _revert_edit(self, event: Any) -> None:
         col = _COL_X if event.column == _COL_X else _COL_Y
         self._table.patch({col: [(event.row, event.old)]})
 
@@ -226,7 +225,7 @@ class CurveEditor(param.Parameterized):
 
     # --- Callbacks ---
 
-    def _on_table_edit(self, event) -> None:
+    def _on_table_edit(self, event: Any) -> None:
         if self._updating:
             return
         row = event.row
@@ -248,7 +247,9 @@ class CurveEditor(param.Parameterized):
             if x_str and y_val is not None:
                 x_f = float(x_str)
                 y_f = float(y_val)
-                if not self._validate_age_increasing(df, row, x_f, is_new=True):
+                if not self._validate_age_increasing(
+                    df, row, x_f, is_new=True
+                ):
                     self._revert_edit(event)
                     return
                 if self._curve is None:
@@ -273,11 +274,13 @@ class CurveEditor(param.Parameterized):
             if not self._validate_age_increasing(df, row, x_f, is_new=False):
                 self._revert_edit(event)
                 return
+            if self._curve is None:
+                return
             self._curve._abscissa[row] = x_f
             self._curve._ordinate[row] = y_f
             self._notify_changed()
 
-    def _on_remove_point(self, event) -> None:
+    def _on_remove_point(self, event: Any) -> None:
         sel = self._table.selection
         if not sel:
             return
@@ -309,8 +312,12 @@ class CurveEditor(param.Parameterized):
             df = pd.read_csv(io.BytesIO(data))
             if df.shape[1] < 2:
                 return None
-            ages = pd.to_numeric(df.iloc[:, 0], errors="coerce").dropna().values
-            values = pd.to_numeric(df.iloc[:, 1], errors="coerce").dropna().values
+            ages = (
+                pd.to_numeric(df.iloc[:, 0], errors="coerce").dropna().values
+            )
+            values = (
+                pd.to_numeric(df.iloc[:, 1], errors="coerce").dropna().values
+            )
             n = min(len(ages), len(values))
             if n < 1:
                 return None
@@ -324,7 +331,7 @@ class CurveEditor(param.Parameterized):
         values = np.array([float(p["y"]) for p in pts])
         return ages, values
 
-    def _on_file_loaded(self, event) -> None:
+    def _on_file_loaded(self, event: Any) -> None:
         if self._file_input.value is None:
             return
         filename = self._file_input.filename or "curve.json"

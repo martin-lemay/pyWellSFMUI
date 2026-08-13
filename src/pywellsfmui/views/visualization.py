@@ -1,7 +1,8 @@
+from typing import Any
+
 import numpy as np
 import panel as pn
 import param
-
 import plotly.colors
 
 from pywellsfmui.plots import (
@@ -13,7 +14,6 @@ from pywellsfmui.plots import (
 )
 from pywellsfmui.state.actions import Actions
 from pywellsfmui.state.app_state import AppState
-
 
 _PLOTLY_PALETTE = plotly.colors.qualitative.Plotly
 
@@ -96,8 +96,9 @@ class VisualizationView(param.Parameterized):
         self,
         state: AppState,
         actions: Actions,
-        **params,
+        **params: Any,
     ) -> None:
+        """Initialize the visualization view."""
         super().__init__(**params)
         self._state = state
         self._actions = actions
@@ -152,14 +153,18 @@ class VisualizationView(param.Parameterized):
         return None
 
     def _rebuild_well_figures(self) -> None:
-        """Rebuild all well figures for current log/age
-        settings and update persistent panes in place."""
+        """Rebuild all well figures for current log/age.
+
+        Updates persistent panes in place.
+        """
         if not self._well_pane_map:
             return
         log_name = self._log_select.value
         use_age = self._age_cb.value
         show_markers = self._markers_cb.value
-        y_range = self._cached_age_range if use_age else self._cached_depth_range
+        y_range = (
+            self._cached_age_range if use_age else self._cached_depth_range
+        )
         cmap = self._get_color_map(log_name)
 
         for pane, well in self._well_pane_map:
@@ -174,8 +179,10 @@ class VisualizationView(param.Parameterized):
             pane.object = fig
 
     def _toggle_markers(self) -> None:
-        """Toggle marker visibility on existing figures
-        without rebuilding them."""
+        """Toggle marker visibility on existing figures.
+
+        Does not rebuild them.
+        """
         visible = self._markers_cb.value
         for pane, _ in self._well_pane_map:
             if pane.object is not None:
@@ -197,7 +204,9 @@ class VisualizationView(param.Parameterized):
 
         rd_list = self._state.realization_data_list
         accum = self._state.accumulation_model
-        element_names = list(accum.elements.keys()) if accum is not None else []
+        element_names = (
+            list(accum.elements.keys()) if accum is not None else []
+        )
 
         times = ds["time"].values
         sea_level = ds["sea_level"].values
@@ -225,7 +234,11 @@ class VisualizationView(param.Parameterized):
 
             total = ds["depo_rate_total"].isel(realization=i).values
             wd = ds["waterDepth"].isel(realization=i).values
-            envs = ds["environment"].isel(realization=i).values if has_env else None
+            envs = (
+                ds["environment"].isel(realization=i).values
+                if has_env
+                else None
+            )
 
             rates_fig = build_production_rates_plot(
                 times,
@@ -293,20 +306,26 @@ class VisualizationView(param.Parameterized):
         if old_value in log_names:
             self._log_select.value = old_value
         else:
-            self._log_select.value = "Facies" if "Facies" in log_names else log_names[0]
+            self._log_select.value = (
+                "Facies" if "Facies" in log_names else log_names[0]
+            )
 
         # Cache data for _rebuild_well_figures
         self._cached_depth_range = _compute_common_depth_range(all_wells)
         self._cached_age_range = _compute_common_age_range(all_wells)
         accum = self._state.accumulation_model
-        element_names = list(accum.elements.keys()) if accum is not None else []
+        element_names = (
+            list(accum.elements.keys()) if accum is not None else []
+        )
         self._cached_element_colors = _build_element_color_map(element_names)
 
         # Build initial figures and persistent panes
         log_name = self._log_select.value
         use_age = self._age_cb.value
         show_markers = self._markers_cb.value
-        y_range = self._cached_age_range if use_age else self._cached_depth_range
+        y_range = (
+            self._cached_age_range if use_age else self._cached_depth_range
+        )
         cmap = self._get_color_map(log_name)
 
         self._well_pane_map = []

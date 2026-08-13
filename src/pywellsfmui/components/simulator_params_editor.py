@@ -4,9 +4,12 @@ Exposes FSSimulatorParameters fields as numeric inputs with
 defaults matching the pyWellSFM dataclass.
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 import panel as pn
 import param
-
 from pywellsfm.model import FSSimulatorParameters
 
 from pywellsfmui.state.actions import Actions
@@ -25,8 +28,9 @@ class SimulatorParamsEditor(param.Parameterized):
         self,
         state: AppState,
         actions: Actions,
-        **params,
+        **params: Any,
     ) -> None:
+        """Initialize the simulator parameters editor."""
         super().__init__(**params)
         self._state = state
         self._actions = actions
@@ -100,12 +104,12 @@ class SimulatorParamsEditor(param.Parameterized):
     def _push_params(self) -> None:
         self._actions.set_simulator_params(self._build_params())
 
-    def _on_value_changed(self, event) -> None:
+    def _on_value_changed(self, event: Any) -> None:
         if self._updating:
             return
         self._push_params()
 
-    def _on_state_changed(self, event) -> None:
+    def _on_state_changed(self, event: Any) -> None:
         p = event.new
         if p is None:
             return

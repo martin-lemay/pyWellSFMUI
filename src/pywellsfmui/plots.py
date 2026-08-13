@@ -5,7 +5,6 @@ import numpy.typing as npt
 import plotly.colors
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
 from pywellsfm.model import Curve, Marker, Well
 from pywellsfm.utils import plot_litho_log
 
@@ -66,12 +65,12 @@ def _add_env_legend_traces(
                 y=[None],
                 mode="markers",
                 name=env_name,
-                marker=dict(
-                    size=10,
-                    color=color,
-                    opacity=opacity,
-                    symbol="square",
-                ),
+                marker={
+                    "size": 10,
+                    "color": color,
+                    "opacity": opacity,
+                    "symbol": "square",
+                },
                 showlegend=True,
             )
         )
@@ -124,7 +123,9 @@ def add_environment_spans(
     edges.append(float(times[0]) - (float(times[1]) - float(times[0])) / 2.0)
     for i in range(n - 1):
         edges.append((float(times[i]) + float(times[i + 1])) / 2.0)
-    edges.append(float(times[-1]) + (float(times[-1]) - float(times[-2])) / 2.0)
+    edges.append(
+        float(times[-1]) + (float(times[-1]) - float(times[-2])) / 2.0
+    )
 
     # Walk contiguous blocks
     env_colors: dict[str, str] = {}
@@ -192,7 +193,7 @@ def build_curve_plot(
         xaxis_title=x_title,
         yaxis_title="Age (My)",
         yaxis_autorange="reversed",
-        margin=dict(l=50, r=20, t=30, b=50),
+        margin={"l": 50, "r": 20, "t": 30, "b": 50},
         height=350,
     )
     return fig
@@ -250,7 +251,7 @@ def build_elevation_plot(
         xaxis_title="Time (Myr)",
         yaxis_title="Elevation (m)",
         xaxis_autorange="reversed",
-        margin=dict(l=50, r=20, t=40, b=50),
+        margin={"l": 50, "r": 20, "t": 40, "b": 50},
         height=300,
     )
     return fig
@@ -306,7 +307,7 @@ def build_production_rates_plot(
             y=total_rate,
             mode="lines",
             name="Total",
-            line=dict(color="black", dash="dash"),
+            line={"color": "black", "dash": "dash"},
         ),
         secondary_y=False,
     )
@@ -317,7 +318,7 @@ def build_production_rates_plot(
             y=water_depth,
             mode="lines",
             name="Water Depth",
-            line=dict(color="blue", dash="dash"),
+            line={"color": "blue", "dash": "dash"},
         ),
         secondary_y=True,
     )
@@ -335,7 +336,7 @@ def build_production_rates_plot(
         title=well_name,
         xaxis_title="Time (Myr)",
         xaxis_autorange="reversed",
-        margin=dict(l=50, r=50, t=40, b=50),
+        margin={"l": 50, "r": 50, "t": 40, "b": 50},
         height=300,
     )
     fig.update_yaxes(
@@ -350,31 +351,31 @@ def build_production_rates_plot(
 
 
 _MARKER_STYLES: dict[str, dict] = {
-    "Conform": dict(
-        color="gray",
-        dash="solid",
-        width=1.0,
-    ),
-    "Erosive": dict(
-        color="red",
-        dash="solid",
-        width=1.5,
-    ),
-    "Toplap": dict(
-        color="orange",
-        dash="dashdot",
-        width=1.0,
-    ),
-    "Baselap": dict(
-        color="blue",
-        dash="dot",
-        width=1.0,
-    ),
-    "Unknown": dict(
-        color="gray",
-        dash="dash",
-        width=0.5,
-    ),
+    "Conform": {
+        "color": "gray",
+        "dash": "solid",
+        "width": 1.0,
+    },
+    "Erosive": {
+        "color": "red",
+        "dash": "solid",
+        "width": 1.5,
+    },
+    "Toplap": {
+        "color": "orange",
+        "dash": "dashdot",
+        "width": 1.0,
+    },
+    "Baselap": {
+        "color": "blue",
+        "dash": "dot",
+        "width": 1.0,
+    },
+    "Unknown": {
+        "color": "gray",
+        "dash": "dash",
+        "width": 0.5,
+    },
 }
 
 _N_WAVE_POINTS = 80
@@ -395,7 +396,7 @@ def _add_erosive_marker(
             x=xs,
             y=ys,
             mode="lines",
-            line=dict(color="red", width=1.5),
+            line={"color": "red", "width": 1.5},
             showlegend=False,
             hoverinfo="skip",
             visible=visible,
@@ -408,7 +409,7 @@ def _add_erosive_marker(
         showarrow=False,
         xanchor="left",
         yanchor="bottom",
-        font=dict(size=9, color="red"),
+        font={"size": 9, "color": "red"},
         visible=visible,
     )
 
@@ -447,11 +448,11 @@ def _add_markers(
             xref="paper",
             y0=y,
             y1=y,
-            line=dict(
-                dash=style["dash"],
-                color=style["color"],
-                width=style["width"],
-            ),
+            line={
+                "dash": style["dash"],
+                "color": style["color"],
+                "width": style["width"],
+            },
             visible=visible,
         )
         fig.add_annotation(
@@ -548,8 +549,10 @@ def _plot_striplog(
 
 
 def _record_marker_boundary(fig: go.Figure) -> None:
-    """Store current element counts so markers added
-    after this call can be toggled independently."""
+    """Store current element counts so markers added.
+
+    After this call can be toggled independently.
+    """
     fig.update_layout(
         meta={
             "marker_start": {
@@ -647,7 +650,7 @@ def build_well_log_plot(
             xaxis_title=log_name,
             yaxis_title=y_label,
             yaxis_autorange="reversed",
-            margin=dict(l=50, r=20, t=40, b=50),
+            margin={"l": 50, "r": 20, "t": 40, "b": 50},
             height=500,
         )
         if depth_range is not None:
@@ -672,13 +675,13 @@ def build_well_log_plot(
         yref="paper",
         text="N/A",
         showarrow=False,
-        font=dict(size=24, color="gray"),
+        font={"size": 24, "color": "gray"},
     )
     fig.update_layout(
         title=well.name,
         yaxis_title=y_label,
         yaxis_autorange="reversed",
-        margin=dict(l=50, r=20, t=40, b=50),
+        margin={"l": 50, "r": 20, "t": 40, "b": 50},
         height=500,
     )
     if depth_range is not None:

@@ -1,6 +1,5 @@
 import panel as pn
 import pytest
-
 from pywellsfm.model import (
     Facies,
     FaciesCriteria,
@@ -18,12 +17,14 @@ from pywellsfmui.state.message_store import MessageStore
 
 
 @pytest.fixture
-def state():
+def state() -> AppState:
+    """Return a fresh AppState."""
     return AppState()
 
 
 @pytest.fixture
-def actions(state):
+def actions(state: AppState) -> Actions:
+    """Return Actions wired to the given state."""
     return Actions(
         state=state,
         io_manager=IOManager(),
@@ -32,16 +33,27 @@ def actions(state):
 
 
 @pytest.fixture
-def editor(state, actions):
+def editor(
+    state: AppState,
+    actions: Actions,
+) -> FaciesEditor:
+    """Return a FaciesEditor instance."""
     return FaciesEditor(state=state, actions=actions)
 
 
-def test_editor_renders_empty_state(editor):
+def test_editor_renders_empty_state(
+    editor: FaciesEditor,
+) -> None:
+    """Test editor renders with no facies model."""
     panel = editor.panel()
     assert isinstance(panel, pn.Column)
 
 
-def test_editor_renders_with_model(editor, state):
+def test_editor_renders_with_model(
+    editor: FaciesEditor,
+    state: AppState,
+) -> None:
+    """Test editor renders with a facies model."""
     crit = FaciesCriteria(
         name="GrainSize",
         minRange=0.1,
@@ -61,7 +73,11 @@ def test_editor_renders_with_model(editor, state):
     assert df.at[0, "Name"] == "Sand"
 
 
-def test_editor_shows_criteria_on_selection(editor, state):
+def test_editor_shows_criteria_on_selection(
+    editor: FaciesEditor,
+    state: AppState,
+) -> None:
+    """Test selecting a facies shows its criteria."""
     crit = FaciesCriteria(
         name="GrainSize",
         minRange=0.1,
@@ -83,7 +99,12 @@ def test_editor_shows_criteria_on_selection(editor, state):
     assert df.at[0, "Name"] == "GrainSize"
 
 
-def test_editor_syncs_on_state_change(editor, state, actions):
+def test_editor_syncs_on_state_change(
+    editor: FaciesEditor,
+    state: AppState,
+    actions: Actions,
+) -> None:
+    """Test editor syncs when facies are added."""
     actions.add_facies("Sand", FaciesCriteriaType.SEDIMENTOLOGICAL)
     editor._refresh()
     df = editor._facies_table.value

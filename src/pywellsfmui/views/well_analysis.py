@@ -1,9 +1,9 @@
 import io
 import logging
+from typing import Any
 
 import panel as pn
 import param
-
 from pywellsfm.io.curve_io import uncertaintyCurveToBytes
 from pywellsfm.utils.plot import (
     plot_well_analysis,
@@ -35,8 +35,9 @@ class WellAnalysisView(param.Parameterized):
         self,
         state: AppState,
         actions: Actions,
-        **params,
+        **params: Any,
     ) -> None:
+        """Initialize the well analysis view."""
         super().__init__(**params)
         self._state = state
         self._actions = actions
@@ -59,7 +60,9 @@ class WellAnalysisView(param.Parameterized):
             options=[],
             width=200,
         )
-        self._results_placeholder = pn.pane.Markdown("*No accommodation results*")
+        self._results_placeholder = pn.pane.Markdown(
+            "*No accommodation results*"
+        )
         self._plot_pane = pn.pane.Plotly(
             None,
             sizing_mode="stretch_width",
@@ -164,7 +167,7 @@ class WellAnalysisView(param.Parameterized):
         self._compute_btn.disabled = not self._is_step3_ready()
         self._step3_status.object = self._build_step3_status()
 
-    async def _on_compute(self, event) -> None:
+    async def _on_compute(self, event: Any) -> None:
         self._compute_btn.disabled = True
         self._compute_btn.label = "Computing..."
         try:
@@ -175,7 +178,7 @@ class WellAnalysisView(param.Parameterized):
             self._compute_btn.label = "Compute Accommodation"
             self._update_step3()
 
-    def _get_selected_calculator(self):
+    def _get_selected_calculator(self) -> Any | None:
         """Get the calculator for the selected well."""
         name = self._well_select.value
         if not name:
@@ -287,7 +290,9 @@ class WellAnalysisView(param.Parameterized):
             logger.debug("Comparison plot failed", exc_info=True)
             self._comparison_plot_pane.object = None
         track_file = track_label.replace("/", "").replace(" ", "")
-        self._comparison_export_btn.filename = f"WellComparison_{track_file}.png"
+        self._comparison_export_btn.filename = (
+            f"WellComparison_{track_file}.png"
+        )
 
     def _export_comparison_png(self) -> io.BytesIO:
         results = self._state.accommodation_results
@@ -308,6 +313,7 @@ class WellAnalysisView(param.Parameterized):
         return io.BytesIO(png_bytes)
 
     def panel(self) -> pn.Column:
+        """Return the Panel layout for this view."""
         export_row = pn.Row(
             self._export_fig_btn,
             pn.Spacer(width=20),

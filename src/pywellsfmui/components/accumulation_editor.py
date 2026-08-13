@@ -1,13 +1,22 @@
+from __future__ import annotations
+
+import contextlib
 import io
 import json
 import logging
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pywellsfm.model.AccumulationModel import (
+        AccumulationModelElementBase,
+    )
+    from pywellsfm.model.Curve import AccumulationCurve
 
 import numpy as np
 import pandas as pd
 import panel as pn
 import param
 import plotly.graph_objects as go
-
 from pywellsfm.model import (
     AccumulationModelElementGaussian,
     AccumulationModelElementOptimum,
@@ -41,8 +50,9 @@ class AccumulationEditor(param.Parameterized):
         self,
         state: AppState,
         actions: Actions,
-        **params,
+        **params: object,
     ) -> None:
+        """Initialize the accumulation model editor."""
         super().__init__(**params)
         self._state = state
         self._actions = actions
@@ -189,7 +199,9 @@ class AccumulationEditor(param.Parameterized):
             height=28,
         )
 
-        self._curves_title = pn.pane.Markdown("**Reduction Curves**", visible=False)
+        self._curves_title = pn.pane.Markdown(
+            "**Reduction Curves**", visible=False
+        )
         self._load_curve_input = pn.widgets.FileInput(
             accept=".json,.csv",
             width=250,
@@ -295,7 +307,7 @@ class AccumulationEditor(param.Parameterized):
         curve = self._get_selected_curve()
         rows: list[dict] = []
         if curve is not None:
-            for x, y in zip(curve._abscissa, curve._ordinate):
+            for x, y in zip(curve._abscissa, curve._ordinate, strict=False):
                 rows.append({_COL_X: float(x), _COL_Y: float(y)})
             rows.append({_COL_X: _NEW_POINT, _COL_Y: None})
         df = pd.DataFrame(rows)
@@ -330,13 +342,17 @@ class AccumulationEditor(param.Parameterized):
             return None
         return str(df.at[row, "Name"])
 
-    def _get_selected_element(self):
+    def _get_selected_element(
+        self,
+    ) -> AccumulationModelElementBase | None:
         name = self._get_selected_element_name()
         if name is None or self._state.accumulation_model is None:
             return None
         return self._state.accumulation_model.getElementModel(name)
 
-    def _get_selected_optimum_element(self):
+    def _get_selected_optimum_element(
+        self,
+    ) -> AccumulationModelElementOptimum | None:
         elem = self._get_selected_element()
         if isinstance(elem, AccumulationModelElementOptimum):
             return elem
@@ -354,7 +370,9 @@ class AccumulationEditor(param.Parameterized):
             return None
         return str(df.at[row, "Condition"])
 
-    def _get_selected_curve(self):
+    def _get_selected_curve(
+        self,
+    ) -> AccumulationCurve | None:
         elem = self._get_selected_optimum_element()
         curve_name = self._get_selected_curve_name()
         if elem is None or curve_name is None:
@@ -363,7 +381,10 @@ class AccumulationEditor(param.Parameterized):
 
     # --- Status ---
 
-    def _is_element_valid(self, elem) -> bool:
+    def _is_element_valid(
+        self,
+        elem: AccumulationModelElementBase,
+    ) -> bool:
         if elem.accumulationRate <= 0:
             return False
         if isinstance(elem, AccumulationModelElementGaussian):
@@ -371,7 +392,9 @@ class AccumulationEditor(param.Parameterized):
         if isinstance(elem, AccumulationModelElementOptimum):
             if not elem.accumulationCurves:
                 return False
-            return all(len(c._abscissa) >= 2 for c in elem.accumulationCurves.values())
+            return all(
+                len(c._abscissa) >= 2 for c in elem.accumulationCurves.values()
+            )
         return False
 
     def _build_status_html(self) -> str:
@@ -384,7 +407,9 @@ class AccumulationEditor(param.Parameterized):
                 "Accumulation model: 0 elements",
                 Colors.ERROR,
             )
-        all_valid = all(self._is_element_valid(e) for e in model.elements.values())
+        all_valid = all(
+            self._is_element_valid(e) for e in model.elements.values()
+        )
         if all_valid:
             return status_html(
                 f"{count} valid elements",
@@ -413,7 +438,7 @@ class AccumulationEditor(param.Parameterized):
             xaxis_title=curve_name or "Env. Factor Value",
             yaxis_title="Reduction Coefficient",
             yaxis_range=[0, 1.05],
-            margin=dict(l=50, r=20, t=30, b=50),
+            margin={"l": 50, "r": 20, "t": 30, "b": 50},
             height=250,
         )
         return fig
@@ -441,7 +466,7 @@ class AccumulationEditor(param.Parameterized):
         has_elem = elem is not None
         self._type_select.visible = has_elem
         self._rate_input.visible = has_elem
-        if not has_elem:
+        if not has_elem or elem is None:
             self._stddev_input.visible = False
             self._curves_top_panel.visible = False
             self._curves_bottom_panel.visible = False
@@ -450,7 +475,9 @@ class AccumulationEditor(param.Parameterized):
         is_optimum = isinstance(elem, AccumulationModelElementOptimum)
         # Guard against spurious callbacks while syncing
         self._updating_detail = True
-        self._type_select.value = "Gaussian" if is_gaussian else "EnvironmentOptimum"
+        self._type_select.value = (
+            "Gaussian" if is_gaussian else "EnvironmentOptimum"
+        )
         self._rate_input.label = (
             "Mean Accumulation Rate (m/My)"
             if is_gaussian
@@ -496,10 +523,10 @@ class AccumulationEditor(param.Parameterized):
 
     # --- Callbacks ---
 
-    def _on_new_model(self, event) -> None:
+    def _on_new_model(self, event: Any) -> None:
         self._actions.create_empty_accumulation_model()
 
-    def _on_file_loaded(self, event) -> None:
+    def _on_file_loaded(self, event: Any) -> None:
         if self._file_input.value is None:
             return
         try:
@@ -518,7 +545,7 @@ class AccumulationEditor(param.Parameterized):
         json_bytes = json.dumps(data, indent=2).encode("utf-8")
         return io.BytesIO(json_bytes)
 
-    def _on_element_table_edit(self, event) -> None:
+    def _on_element_table_edit(self, event: Any) -> None:
         if self._updating_elements:
             return
         row = event.row
@@ -527,72 +554,64 @@ class AccumulationEditor(param.Parameterized):
         if is_last:
             name = str(event.value).strip()
             if name and name != _NEW_ELEMENT:
-                try:
+                with contextlib.suppress(ValueError):
                     self._actions.add_accumulation_element(name)
-                except ValueError:
-                    pass
         else:
             self._element_table.patch({"Name": [(row, event.old)]})
 
-    def _on_init_from_facies(self, event) -> None:
+    def _on_init_from_facies(self, event: Any) -> None:
         fm = self._state.facies_model
         if fm is None:
             return
         self._actions.create_empty_accumulation_model()
         for facies in sorted(fm.faciesSet, key=lambda f: f.name):
-            try:
+            with contextlib.suppress(ValueError):
                 self._actions.add_accumulation_element(facies.name)
-            except ValueError:
-                pass
 
-    def _on_remove_element(self, event) -> None:
+    def _on_remove_element(self, event: Any) -> None:
         name = self._get_selected_element_name()
         if name is None:
             return
-        try:
+        with contextlib.suppress(ValueError):
             self._actions.remove_accumulation_element(name)
-        except ValueError:
-            pass
 
-    def _on_element_selected(self, event) -> None:
+    def _on_element_selected(self, event: Any) -> None:
         if self._updating_elements:
             return
         self._update_element_detail()
 
-    def _on_type_changed(self, event) -> None:
+    def _on_type_changed(self, event: Any) -> None:
         if self._updating_detail:
             return
         name = self._get_selected_element_name()
         if name is None:
             return
-        try:
+        with contextlib.suppress(ValueError):
             self._actions.set_accumulation_element_type(name, event.new)
-        except ValueError:
-            pass
 
-    def _on_rate_changed(self, event) -> None:
+    def _on_rate_changed(self, event: Any) -> None:
         if self._updating_detail:
             return
         name = self._get_selected_element_name()
         if name is None or event.new is None:
             return
-        try:
-            self._actions.update_accumulation_element_rate(name, float(event.new))
-        except ValueError:
-            pass
+        with contextlib.suppress(ValueError):
+            self._actions.update_accumulation_element_rate(
+                name, float(event.new)
+            )
 
-    def _on_stddev_changed(self, event) -> None:
+    def _on_stddev_changed(self, event: Any) -> None:
         if self._updating_detail:
             return
         name = self._get_selected_element_name()
         if name is None or event.new is None:
             return
-        try:
-            self._actions.update_accumulation_element_stddev(name, float(event.new))
-        except ValueError:
-            pass
+        with contextlib.suppress(ValueError):
+            self._actions.update_accumulation_element_stddev(
+                name, float(event.new)
+            )
 
-    def _on_curve_table_edit(self, event) -> None:
+    def _on_curve_table_edit(self, event: Any) -> None:
         if self._updating_curves:
             return
         elem_name = self._get_selected_element_name()
@@ -604,10 +623,8 @@ class AccumulationEditor(param.Parameterized):
         if is_last:
             name = str(event.value).strip()
             if name and name != _NEW_CURVE:
-                try:
+                with contextlib.suppress(ValueError):
                     self._actions.add_accumulation_curve(elem_name, name)
-                except ValueError:
-                    pass
         else:
             self._curve_table.patch({"Condition": [(row, event.old)]})
 
@@ -623,7 +640,11 @@ class AccumulationEditor(param.Parameterized):
             x = pd.to_numeric(df.iloc[:, 0], errors="coerce").dropna().values
             result = []
             for col_idx in range(1, df.shape[1]):
-                y = pd.to_numeric(df.iloc[:, col_idx], errors="coerce").dropna().values
+                y = (
+                    pd.to_numeric(df.iloc[:, col_idx], errors="coerce")
+                    .dropna()
+                    .values
+                )
                 n = min(len(x), len(y))
                 if n >= 2:
                     result.append((name, x[:n].copy(), y[:n].copy()))
@@ -639,7 +660,7 @@ class AccumulationEditor(param.Parameterized):
         y = np.array([float(p["y"]) for p in pts])
         return [(name, x, y)]
 
-    def _on_curve_file_loaded(self, event) -> None:
+    def _on_curve_file_loaded(self, event: Any) -> None:
         if self._load_curve_input.value is None:
             return
         elem_name = self._get_selected_element_name()
@@ -650,28 +671,24 @@ class AccumulationEditor(param.Parameterized):
         try:
             parsed = self._parse_curve_bytes(data, filename)
             for name, x, y in parsed:
-                try:
+                with contextlib.suppress(ValueError):
                     self._actions.add_accumulation_curve(elem_name, name)
-                except ValueError:
-                    pass
-                try:
-                    self._actions.set_accumulation_curve_data(elem_name, name, x, y)
-                except ValueError:
-                    pass
+                with contextlib.suppress(ValueError):
+                    self._actions.set_accumulation_curve_data(
+                        elem_name, name, x, y
+                    )
         except Exception:
             logger.debug("Load curve file failed", exc_info=True)
 
-    def _on_remove_curve(self, event) -> None:
+    def _on_remove_curve(self, event: Any) -> None:
         elem_name = self._get_selected_element_name()
         curve_name = self._get_selected_curve_name()
         if not elem_name or not curve_name:
             return
-        try:
+        with contextlib.suppress(ValueError):
             self._actions.remove_accumulation_curve(elem_name, curve_name)
-        except ValueError:
-            pass
 
-    def _on_curve_selected(self, event) -> None:
+    def _on_curve_selected(self, event: Any) -> None:
         if self._updating_curves:
             return
         self._update_point_table()
@@ -700,17 +717,14 @@ class AccumulationEditor(param.Parameterized):
                 xs.append(float(val))
         if is_new:
             xs.append(x)
-        for i in range(1, len(xs)):
-            if xs[i] <= xs[i - 1]:
-                return False
-        return True
+        return all(xs[i] > xs[i - 1] for i in range(1, len(xs)))
 
-    def _revert_edit(self, event) -> None:
+    def _revert_edit(self, event: Any) -> None:
         """Revert a table edit to its old value."""
         col = _COL_X if event.column == _COL_X else _COL_Y
         self._point_table.patch({col: [(event.row, event.old)]})
 
-    def _on_point_table_edit(self, event) -> None:
+    def _on_point_table_edit(self, event: Any) -> None:
         if self._updating_points:
             return
         elem_name = self._get_selected_element_name()
@@ -739,15 +753,13 @@ class AccumulationEditor(param.Parameterized):
                 if not self._validate_point(df, row, x_f, y_f, is_new=True):
                     self._revert_edit(event)
                     return
-                try:
+                with contextlib.suppress(ValueError):
                     self._actions.add_accumulation_curve_point(
                         elem_name,
                         curve_name,
                         x_f,
                         y_f,
                     )
-                except ValueError:
-                    pass
         else:
             x_val = df.at[row, x_col]
             y_val = df.at[row, _COL_Y]
@@ -762,7 +774,7 @@ class AccumulationEditor(param.Parameterized):
             if not self._validate_point(df, row, x_f, y_f, is_new=False):
                 self._revert_edit(event)
                 return
-            try:
+            with contextlib.suppress(ValueError):
                 self._actions.update_accumulation_curve_point(
                     elem_name,
                     curve_name,
@@ -770,10 +782,8 @@ class AccumulationEditor(param.Parameterized):
                     x_f,
                     y_f,
                 )
-            except ValueError:
-                pass
 
-    def _on_remove_point(self, event) -> None:
+    def _on_remove_point(self, event: Any) -> None:
         elem_name = self._get_selected_element_name()
         curve_name = self._get_selected_curve_name()
         if not elem_name or not curve_name:
@@ -785,10 +795,10 @@ class AccumulationEditor(param.Parameterized):
         df = self._point_table.value
         if row >= len(df) - 1:
             return
-        try:
-            self._actions.remove_accumulation_curve_point(elem_name, curve_name, row)
-        except ValueError:
-            pass
+        with contextlib.suppress(ValueError):
+            self._actions.remove_accumulation_curve_point(
+                elem_name, curve_name, row
+            )
 
     def panel(self) -> pn.Column:
         """Assemble and return the full layout."""

@@ -1,13 +1,15 @@
+from __future__ import annotations
+
+import contextlib
 import io
 import json
 import logging
+from typing import Any
 
 import pandas as pd
 import panel as pn
 import param
-
-
-from pywellsfm.model import Curve
+from pywellsfm.model import Curve, EnvironmentConditionsModel
 from pywellsfm.model.EnvironmentConditionModel import (
     EnvironmentConditionModelConstant,
     EnvironmentConditionModelCurve,
@@ -50,8 +52,9 @@ class DepositionalEnvEditor(param.Parameterized):
         self,
         state: AppState,
         actions: Actions,
-        **params,
+        **params: Any,
     ) -> None:
+        """Initialize the depositional environment editor."""
         super().__init__(**params)
         self._state = state
         self._actions = actions
@@ -67,9 +70,12 @@ class DepositionalEnvEditor(param.Parameterized):
 
     def _build_widgets(self) -> None:
         # Mode toggle
-        _GLOBAL_LABEL = "Global mode: environmental conditions are defined globally"
+        _GLOBAL_LABEL = (
+            "Global mode: environmental conditions are defined globally"
+        )
         _ENVS_LABEL = (
-            "Environments mode: environmental conditions are defined per environment"
+            "Environments mode: environmental conditions"
+            " are defined per environment"
         )
         self._mode_labels = {
             _GLOBAL_LABEL: False,
@@ -388,7 +394,7 @@ class DepositionalEnvEditor(param.Parameterized):
             "value",
         )
         self._weights_table.on_edit(self._on_weight_edit)
-        for w in (
+        for dw in (
             self._wd_sigma,
             self._wd_weight,
             self._trans_sigma,
@@ -398,7 +404,7 @@ class DepositionalEnvEditor(param.Parameterized):
             self._trend_weight,
             self._interval_method,
         ):
-            w.param.watch(
+            dw.param.watch(
                 self._on_de_param_changed,
                 "value",
             )
@@ -469,7 +475,10 @@ class DepositionalEnvEditor(param.Parameterized):
         rows.append({"Name": _NEW_COND, "Type": ""})
         return pd.DataFrame(rows)
 
-    def _get_conditions_model_for_display(self, env_name):
+    def _get_conditions_model_for_display(
+        self,
+        env_name: str,
+    ) -> EnvironmentConditionsModel | None:
         if env_name == "global":
             return self._state.global_env_conditions
         if not env_name:
@@ -484,7 +493,9 @@ class DepositionalEnvEditor(param.Parameterized):
 
     def _build_weights_df(self) -> pd.DataFrame:
         weights = self._state.de_simulator_weights
-        rows = [{"Environment": k, "Weight": v} for k, v in sorted(weights.items())]
+        rows = [
+            {"Environment": k, "Weight": v} for k, v in sorted(weights.items())
+        ]
         return pd.DataFrame(
             rows,
             columns=["Environment", "Weight"],
@@ -492,12 +503,18 @@ class DepositionalEnvEditor(param.Parameterized):
 
     # --- Styling ---
 
-    def _style_env_placeholder(self, row):
+    def _style_env_placeholder(
+        self,
+        row: pd.Series,  # type: ignore[type-arg]
+    ) -> list[str]:
         if row["Name"] == _NEW_ENV:
             return ["font-style: italic; color: #999"] * len(row)
         return [""] * len(row)
 
-    def _style_cond_placeholder(self, row):
+    def _style_cond_placeholder(
+        self,
+        row: pd.Series,  # type: ignore[type-arg]
+    ) -> list[str]:
         if row["Name"] == _NEW_COND:
             return ["font-style: italic; color: #999"] * len(row)
         return [""] * len(row)
@@ -620,7 +637,11 @@ class DepositionalEnvEditor(param.Parameterized):
         if hasattr(self, "_cond_detail_col"):
             self._rebuild_cond_detail_col()
 
-    def _sync_cond_fields(self, cond_type, cond_model) -> None:
+    def _sync_cond_fields(
+        self,
+        cond_type: str,
+        cond_model: Any,
+    ) -> None:
         if cond_type == "Constant":
             self._cond_value.value = cond_model.value
         elif cond_type == "Uniform":
@@ -658,13 +679,13 @@ class DepositionalEnvEditor(param.Parameterized):
 
     # --- Callbacks ---
 
-    def _on_mode_changed(self, event) -> None:
+    def _on_mode_changed(self, event: Any) -> None:
         if self._updating:
             return
         enabled = self._mode_labels.get(event.new, False)
         self._actions.set_use_de_simulator(enabled)
 
-    def _on_global_load(self, event) -> None:
+    def _on_global_load(self, event: Any) -> None:
         if self._global_load.value is None:
             return
         try:
@@ -684,7 +705,7 @@ class DepositionalEnvEditor(param.Parameterized):
             json.dumps(data, indent=2).encode("utf-8"),
         )
 
-    def _on_multi_load(self, event) -> None:
+    def _on_multi_load(self, event: Any) -> None:
         if self._multi_load.value is None:
             return
         try:
@@ -704,14 +725,11 @@ class DepositionalEnvEditor(param.Parameterized):
             json.dumps(data, indent=2).encode("utf-8"),
         )
 
-    def _on_new_model(self, event) -> None:
-        if isinstance(event.new, str):
-            template = event.new
-        else:
-            template = "empty"
+    def _on_new_model(self, event: Any) -> None:
+        template = event.new if isinstance(event.new, str) else "empty"
         self._actions.create_de_model(template)
 
-    def _on_env_selected(self, event) -> None:
+    def _on_env_selected(self, event: Any) -> None:
         if self._updating:
             return
         self._updating = True
@@ -728,7 +746,7 @@ class DepositionalEnvEditor(param.Parameterized):
         """
         pn.state.execute(self._refresh)
 
-    def _on_env_table_edit(self, event) -> None:
+    def _on_env_table_edit(self, event: Any) -> None:
         if self._updating:
             return
         row = event.row
@@ -747,7 +765,7 @@ class DepositionalEnvEditor(param.Parameterized):
                 {"Name": [(row, event.old)]},
             )
 
-    def _on_remove_env(self, event) -> None:
+    def _on_remove_env(self, event: Any) -> None:
         name = self._get_selected_env_name()
         if name:
             try:
@@ -756,7 +774,7 @@ class DepositionalEnvEditor(param.Parameterized):
             except ValueError:
                 pass
 
-    def _on_env_name_changed(self, event) -> None:
+    def _on_env_name_changed(self, event: Any) -> None:
         if self._updating:
             return
         old_name = self._get_selected_env_name()
@@ -771,43 +789,39 @@ class DepositionalEnvEditor(param.Parameterized):
             except ValueError:
                 pass
 
-    def _on_distality_changed(self, event) -> None:
+    def _on_distality_changed(self, event: Any) -> None:
         if self._updating:
             return
         env_name = self._get_selected_env_name()
         if env_name:
-            try:
+            with contextlib.suppress(ValueError):
                 self._actions.set_environment_distality(
                     env_name,
                     event.new,
                 )
-            except ValueError:
-                pass
 
-    def _on_wd_param_changed(self, event) -> None:
+    def _on_wd_param_changed(self, event: Any) -> None:
         if self._updating:
             return
         env_name = self._get_selected_env_name()
         if not env_name:
             return
-        try:
+        with contextlib.suppress(ValueError, TypeError):
             self._actions.set_environment_water_depth_model(
                 env_name,
                 "Uniform",
                 minValue=self._wd_min.value,
                 maxValue=self._wd_max.value,
             )
-        except (ValueError, TypeError):
-            pass
 
-    def _on_cond_selected(self, event) -> None:
+    def _on_cond_selected(self, event: Any) -> None:
         if self._updating:
             return
         self._updating = True
         self._refresh_cond_detail()
         self._updating = False
 
-    def _on_cond_table_edit(self, event) -> None:
+    def _on_cond_table_edit(self, event: Any) -> None:
         if self._updating:
             return
         row = event.row
@@ -834,7 +848,7 @@ class DepositionalEnvEditor(param.Parameterized):
                 {event.column: [(row, event.old)]},
             )
 
-    def _on_remove_cond(self, event) -> None:
+    def _on_remove_cond(self, event: Any) -> None:
         cond_name = self._get_selected_cond_name()
         env_name = self._current_env_name()
         if cond_name and env_name:
@@ -847,14 +861,14 @@ class DepositionalEnvEditor(param.Parameterized):
             except ValueError:
                 pass
 
-    def _on_cond_type_changed(self, event) -> None:
+    def _on_cond_type_changed(self, event: Any) -> None:
         if self._updating:
             return
         if hasattr(self, "_cond_detail_col"):
             self._rebuild_cond_detail_col()
         self._apply_cond_model()
 
-    def _on_cond_param_changed(self, event) -> None:
+    def _on_cond_param_changed(self, event: Any) -> None:
         if self._updating:
             return
         self._apply_cond_model()
@@ -908,7 +922,7 @@ class DepositionalEnvEditor(param.Parameterized):
                 "maxValue": self._cond_max.value,
             }
         if model_type == "Curve":
-            related = self._cond_related_input.value.strip()
+            related = (self._cond_related_input.value or "").strip()
             curve = self._cond_curve_editor.get_curve()
             if not related or curve is None:
                 return None
@@ -923,23 +937,21 @@ class DepositionalEnvEditor(param.Parameterized):
             return {"curve": c}
         return {}
 
-    def _on_weight_edit(self, event) -> None:
+    def _on_weight_edit(self, event: Any) -> None:
         if self._updating:
             return
         df = self._weights_table.value
         env_name = df.at[event.row, "Environment"]
-        try:
+        with contextlib.suppress(ValueError):
             self._actions.set_de_simulator_weight(
                 str(env_name),
                 float(event.value),
             )
-        except ValueError:
-            pass
 
-    def _on_de_param_changed(self, event) -> None:
+    def _on_de_param_changed(self, event: Any) -> None:
         if self._updating:
             return
-        try:
+        with contextlib.suppress(ValueError, TypeError):
             self._actions.set_de_simulator_params(
                 waterDepth_sigma=self._wd_sigma.value,
                 waterDepth_weight=self._wd_weight.value,
@@ -952,8 +964,6 @@ class DepositionalEnvEditor(param.Parameterized):
                     IntervalDistanceMethod(self._interval_method.value)
                 ),
             )
-        except (ValueError, TypeError):
-            pass
 
     # --- Dynamic field visibility ---
 
@@ -989,6 +999,7 @@ class DepositionalEnvEditor(param.Parameterized):
     # --- Layout ---
 
     def panel(self) -> pn.Column:
+        """Return the Panel layout for this editor."""
         title_row = pn.Row(
             pn.pane.Markdown(
                 "### Step 3 - Depositional Environment And Conditions",

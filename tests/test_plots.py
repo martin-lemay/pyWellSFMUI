@@ -15,12 +15,14 @@ from pywellsfmui.plots import (
 )
 
 
-def test_known_environment_returns_mapped_color():
+def test_known_environment_returns_mapped_color() -> None:
+    """Test known env returns its mapped color."""
     seen: set[str] = set()
     assert get_environment_color("Basin", seen) == "lightsteelblue"
 
 
-def test_unknown_environment_auto_assigns_color():
+def test_unknown_environment_auto_assigns_color() -> None:
+    """Test unknown env gets auto-assigned color."""
     seen: set[str] = set()
     palette = plotly.colors.qualitative.Plotly
     color = get_environment_color("NoSuchEnv", seen)
@@ -28,21 +30,24 @@ def test_unknown_environment_auto_assigns_color():
     assert "NoSuchEnv" in seen
 
 
-def test_unknown_environment_same_color_on_repeat():
+def test_unknown_environment_same_color_on_repeat() -> None:
+    """Test unknown env gets same color on repeat."""
     seen: set[str] = set()
     c1 = get_environment_color("FooEnv", seen)
     c2 = get_environment_color("FooEnv", seen)
     assert c1 == c2
 
 
-def test_multiple_unknowns_get_different_colors():
+def test_multiple_unknowns_get_different_colors() -> None:
+    """Test multiple unknowns get different colors."""
     seen: set[str] = set()
     c1 = get_environment_color("Env_A", seen)
     c2 = get_environment_color("Env_B", seen)
     assert c1 != c2
 
 
-def test_add_environment_spans_adds_vrects():
+def test_add_environment_spans_adds_vrects() -> None:
+    """Test env spans add vrects to figure."""
     fig = go.Figure()
     times = np.array([30.0, 20.0, 10.0])
     envs = np.array(["Basin", "Basin", "OuterRamp"])
@@ -52,7 +57,8 @@ def test_add_environment_spans_adds_vrects():
     assert len(fig.data) == 2
 
 
-def test_add_environment_spans_empty():
+def test_add_environment_spans_empty() -> None:
+    """Test env spans with empty arrays."""
     fig = go.Figure()
     times = np.array([])
     envs = np.array([])
@@ -61,7 +67,8 @@ def test_add_environment_spans_empty():
     assert len(fig.data) == 0
 
 
-def test_add_environment_spans_single_point():
+def test_add_environment_spans_single_point() -> None:
+    """Test env spans with a single point."""
     fig = go.Figure()
     times = np.array([10.0])
     envs = np.array(["Basin"])
@@ -70,7 +77,8 @@ def test_add_environment_spans_single_point():
     assert len(fig.data) == 1
 
 
-def test_build_elevation_plot_has_three_traces():
+def test_build_elevation_plot_has_three_traces() -> None:
+    """Test elevation plot has 3 traces."""
     t = np.array([30.0, 20.0, 10.0])
     sea = np.array([5.0, 10.0, 8.0])
     base = np.array([-10.0, -15.0, -20.0])
@@ -78,10 +86,15 @@ def test_build_elevation_plot_has_three_traces():
     fig = build_elevation_plot(t, sea, base, topo, "Well_1")
     assert len(fig.data) == 3
     names = {tr.name for tr in fig.data}
-    assert names == {"Sea Level", "Basement", "Topography"}
+    assert names == {
+        "Sea Level",
+        "Basement",
+        "Topography",
+    }
 
 
-def test_build_elevation_plot_xaxis_reversed():
+def test_build_elevation_plot_xaxis_reversed() -> None:
+    """Test elevation plot has reversed x-axis."""
     t = np.array([30.0, 20.0, 10.0])
     sea = np.array([5.0, 10.0, 8.0])
     base = np.array([-10.0, -15.0, -20.0])
@@ -90,7 +103,8 @@ def test_build_elevation_plot_xaxis_reversed():
     assert fig.layout.xaxis.autorange == "reversed"
 
 
-def test_build_production_rates_basic():
+def test_build_production_rates_basic() -> None:
+    """Test production rates basic plot."""
     t = np.array([30.0, 20.0, 10.0])
     elem_rates = {
         "Shallow": np.array([1.0, 0.5, 0.2]),
@@ -106,14 +120,15 @@ def test_build_production_rates_basic():
     assert "Water Depth" in names
 
 
-def test_build_production_rates_with_environments():
+def test_build_production_rates_with_environments() -> None:
+    """Test production rates with env spans."""
     t = np.array([30.0, 20.0, 10.0])
     elem_rates = {"Mud": np.array([0.5, 0.5, 0.5])}
     total = np.array([0.5, 0.5, 0.5])
     wd = np.array([50.0, 50.0, 50.0])
     envs = np.array(["Basin", "Basin", "ShelfSlope"])
     fig = build_production_rates_plot(t, elem_rates, total, wd, envs, "Well_1")
-    # 1 element + total + water depth + 2 env legend = 5 traces
+    # 1 elem + total + water depth + 2 env = 5
     assert len(fig.data) == 5
     # 2 environment spans
     assert len(fig.layout.shapes) == 2
@@ -122,7 +137,8 @@ def test_build_production_rates_with_environments():
     assert "ShelfSlope" in env_names
 
 
-def test_build_production_rates_xaxis_reversed():
+def test_build_production_rates_xaxis_reversed() -> None:
+    """Test production rates has reversed x-axis."""
     t = np.array([30.0, 20.0, 10.0])
     elem_rates = {"A": np.array([1.0, 1.0, 1.0])}
     total = np.array([1.0, 1.0, 1.0])
@@ -131,7 +147,7 @@ def test_build_production_rates_xaxis_reversed():
     assert fig.layout.xaxis.autorange == "reversed"
 
 
-def test_build_well_log_plot_discrete():
+def test_build_well_log_plot_discrete() -> None:
     """Discrete log delegates to plot_litho_log."""
     well = MagicMock()
     well.name = "W1"
@@ -147,12 +163,17 @@ def test_build_well_log_plot_discrete():
         return_value=fake_fig,
     ) as mock_plot:
         fig = build_well_log_plot(well, "Facies")
-        mock_plot.assert_called_once_with(well, "Facies", None, depth_range=None)
+        mock_plot.assert_called_once_with(
+            well,
+            "Facies",
+            None,
+            depth_range=None,
+        )
     assert fig is fake_fig
 
 
-def test_build_well_log_plot_discrete_with_color_map():
-    """Discrete log passes color_map to plot_litho_log."""
+def test_build_well_log_plot_discrete_with_color_map() -> None:
+    """Discrete log passes color_map."""
     well = MagicMock()
     well.name = "W1"
     well.getDiscreteLogNames.return_value = {"MainElement"}
@@ -166,7 +187,11 @@ def test_build_well_log_plot_discrete_with_color_map():
         "pywellsfmui.plots.plot_litho_log",
         return_value=fake_fig,
     ) as mock_plot:
-        build_well_log_plot(well, "MainElement", color_map=cmap)
+        build_well_log_plot(
+            well,
+            "MainElement",
+            color_map=cmap,
+        )
         mock_plot.assert_called_once_with(
             well,
             "MainElement",
@@ -175,7 +200,7 @@ def test_build_well_log_plot_discrete_with_color_map():
         )
 
 
-def test_build_well_log_plot_continuous():
+def test_build_well_log_plot_continuous() -> None:
     """Continuous log produces a line scatter plot."""
     well = MagicMock()
     well.name = "W1"
@@ -195,8 +220,8 @@ def test_build_well_log_plot_continuous():
     assert fig.layout.yaxis.autorange == "reversed"
 
 
-def test_build_well_log_plot_missing():
-    """Missing log returns placeholder with N/A annotation."""
+def test_build_well_log_plot_missing() -> None:
+    """Missing log returns placeholder with N/A."""
     well = MagicMock()
     well.name = "W1"
     well.getDiscreteLogNames.return_value = set()
@@ -208,8 +233,8 @@ def test_build_well_log_plot_missing():
     assert any("N/A" in a.text for a in annotations)
 
 
-def test_build_well_log_plot_continuous_depth_range():
-    """Continuous log respects depth_range parameter."""
+def test_build_well_log_plot_continuous_depth_range() -> None:
+    """Continuous log respects depth_range."""
     well = MagicMock()
     well.name = "W1"
     well.getDiscreteLogNames.return_value = set()
