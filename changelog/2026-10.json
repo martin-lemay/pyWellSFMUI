@@ -1,0 +1,39 @@
+{
+  "month": "2026-10",
+  "generated": "2026-10-08T00:00:00Z",
+  "summary": "October readies pyWellSFMUI for its first release on top of pyWellSFM 0.1.0. The app now starts with a single command, shows its versions in the sidebar and keeps each user's messages separate on shared servers. Failed downloads are reported with clear notifications instead of empty files, figures are exported straight from the plot toolbar, and uploaded files are checked more strictly.",
+  "entries": [
+    {
+      "title": "Get notified when a download fails",
+      "description": "When a model, curve or simulation cannot be exported, an error notification now explains why instead of silently downloading an empty file.",
+      "category": "feature",
+      "components": ["components"],
+      "date": "2026-10-08",
+      "commits": ["f4b4456"]
+    },
+    {
+      "title": "Safer uploads and shared computing resources",
+      "description": "Uploaded JSON files that reference other files on the server are rejected, and accommodation computations of all users share a bounded pool of worker processes.",
+      "category": "fix",
+      "components": ["state"],
+      "date": "2026-10-08",
+      "commits": ["a320ee8"]
+    },
+    {
+      "title": "Export figures from the plot toolbar",
+      "description": "Well analysis and well comparison figures are now downloaded as named PNG files with the camera icon of the plot toolbar, replacing the separate export buttons.",
+      "category": "improvement",
+      "components": ["views"],
+      "date": "2026-10-08",
+      "commits": ["a70b8ed"]
+    },
+    {
+      "title": "Start the app with python -m pywellsfmui",
+      "description": "The app opens in the browser with a single command, shows the pyWellSFMUI and pyWellSFM versions in the sidebar, and keeps pyWellSFM messages separate for each user session.",
+      "category": "feature",
+      "components": ["app"],
+      "date": "2026-10-08",
+      "commits": ["10cdefe"]
+    }
+  ]
+}
