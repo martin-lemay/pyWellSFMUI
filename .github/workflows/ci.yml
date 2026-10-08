@@ -26,12 +26,15 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: pyproject.toml
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install git+https://github.com/martin-lemay/pyWellSFM.git
+          # pinned pyWellSFM release, see requirements.txt
+          python -m pip install -r requirements.txt
           python -m pip install ".[dev]"
           python -m pip install ruff mypy
 
