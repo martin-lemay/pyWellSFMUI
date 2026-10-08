@@ -2,15 +2,17 @@
 
 ## Launching the App
 
-Install the dependencies and start the Panel server:
+Install the pinned pyWellSFM release and the UI, then start the app:
 
 ```bash
-pip install -e ../pyWellSFM
-pip install -e .
-panel serve src/pywellsfmui/app.py
+pip install -r https://raw.githubusercontent.com/martin-lemay/pyWellSFMUI/main/requirements.txt
+pip install git+https://github.com/martin-lemay/pyWellSFMUI.git
+python -m pywellsfmui
 ```
 
-Open the URL printed in the terminal (typically `http://localhost:5006/app`).
+The app opens in your browser (otherwise, open the URL printed in the
+terminal, typically `http://localhost:5006/app`). Extra options are passed to
+`panel serve`, e.g. `python -m pywellsfmui --port 5007`.
 
 ## Interface Overview
 

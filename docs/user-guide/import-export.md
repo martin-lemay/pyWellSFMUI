@@ -64,10 +64,9 @@ After running an accommodation computation (Well Analysis tab), the following ex
 
 | Export | Format | Description |
 |--------|--------|-------------|
-| Export Figure | PNG | Well analysis plot for the selected well |
 | Export Water Depth | CSV | Water depth uncertainty curve |
 | Export Accommodation | CSV | Accommodation uncertainty curve |
 | Export WD/Thickness | CSV | Water-depth/thickness ratio curve |
-| Export Figure (Comparison) | PNG | Multi-well comparison plot |
-
 These CSV files contain the pyWellSFM uncertainty curve format (with min, mean, and max columns).
+
+Figures (well analysis and well comparison plots) are downloaded as PNG with the camera icon of each plot's toolbar; the file is named after the selected well or track.

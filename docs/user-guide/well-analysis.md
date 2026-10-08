@@ -58,11 +58,12 @@ After computation, two result sections appear.
 - Select a well from the **Well** dropdown to display its analysis plot.
 - The plot shows the well's facies log, water depth, accommodation, and WD/thickness ratio tracks.
 
+To download the current well plot as PNG, use the camera icon of the plot toolbar.
+
 **Export buttons** (visible after computation):
 
 | Button | Output |
 |--------|--------|
-| Export Figure | PNG image of the current well plot |
 | Export Water Depth | CSV file of the water depth curve |
 | Export Accommodation | CSV file of the accommodation curve |
 | Export WD/Thickness | CSV file of the WD/thickness ratio curve |
@@ -71,4 +72,4 @@ After computation, two result sections appear.
 
 - Select a **Track** to compare across all wells: *Water Depth*, *Accommodation*, or *WD/Thickness Ratio*.
 - The comparison plot overlays the selected track for all computed wells.
-- Click **Export Figure** to download the comparison plot as PNG.
+- Use the camera icon of the plot toolbar to download the comparison plot as PNG.
