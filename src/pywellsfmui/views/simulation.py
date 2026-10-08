@@ -1,4 +1,5 @@
 import asyncio
+import contextvars
 import io
 import logging
 from collections.abc import Callable
@@ -26,6 +27,7 @@ from pywellsfmui.components.realization_data_editor import (
 from pywellsfmui.components.simulator_params_editor import (
     SimulatorParamsEditor,
 )
+from pywellsfmui.notifications import guarded_download
 from pywellsfmui.state.actions import Actions
 from pywellsfmui.state.app_state import AppState
 from pywellsfmui.theme import Colors, status_html
@@ -89,7 +91,9 @@ class SimulationView(param.Parameterized):
             align="center",
         )
         self._save_btn = pn.widgets.FileDownload(
-            callback=self._make_save_download,
+            callback=guarded_download(
+                self._make_save_download, "the simulation"
+            ),
             filename="simulation.json",
             label="Save Simulation File",
             color="success",
@@ -149,12 +153,7 @@ class SimulationView(param.Parameterized):
             self._load_input.value = None  # type: ignore[assignment]
 
     def _make_save_download(self) -> io.BytesIO:
-        try:
-            data = self._actions.save_simulation_file()
-            return io.BytesIO(data)
-        except Exception:
-            logger.debug("Save simulation failed", exc_info=True)
-            return io.BytesIO(b"")
+        return io.BytesIO(self._actions.save_simulation_file())
 
     def _is_run_ready(self) -> bool:
         return self._state.accumulation_model is not None and bool(
@@ -183,8 +182,11 @@ class SimulationView(param.Parameterized):
         # (e.g., "Simulating age 45.2 / 100.0 Ma...").
         try:
             loop = asyncio.get_event_loop()
+            # copy the context so pyWellSFM logs emitted in the worker
+            # thread are attributed to this session
             await loop.run_in_executor(
                 _EXECUTOR,
+                contextvars.copy_context().run,
                 self._actions.run_simulation,
             )
             self._status_label.object = ""

@@ -120,15 +120,18 @@ def test_well_selector_updates_on_results(
     assert "W1" in view._well_select.options
 
 
-def test_export_figure_btn_exists(
+def test_plot_toolbar_png_named_after_well(
     view: WellAnalysisView,
+    state: AppState,
 ) -> None:
-    """Test export figure button exists."""
+    """The plot toolbar downloads a PNG named after the selected well."""
     _ = view.panel()
-    assert isinstance(
-        view._export_fig_btn,
-        pn.widgets.FileDownload,
-    )
+    state.accommodation_results = {"W1": _make_mock_calculator()}
+    view._update_results()
+    options = view._plot_pane.config["toImageButtonOptions"]
+    assert options["format"] == "png"
+    assert options["filename"] == "W1"
+    assert not hasattr(view, "_export_fig_btn")
 
 
 def test_comparison_section_exists(
@@ -146,15 +149,18 @@ def test_comparison_section_exists(
     )
 
 
-def test_comparison_export_btn_exists(
+def test_comparison_toolbar_png_named_after_track(
     view: WellAnalysisView,
+    state: AppState,
 ) -> None:
-    """Test comparison export button exists."""
+    """The comparison toolbar downloads a PNG named after the track."""
     _ = view.panel()
-    assert isinstance(
-        view._comparison_export_btn,
-        pn.widgets.FileDownload,
-    )
+    state.accommodation_results = {"W1": _make_mock_calculator()}
+    view._update_results()
+    options = view._comparison_plot_pane.config["toImageButtonOptions"]
+    assert options["format"] == "png"
+    assert options["filename"] == "WellComparison_Accommodation"
+    assert not hasattr(view, "_comparison_export_btn")
 
 
 def test_comparison_hidden_no_results(
@@ -164,3 +170,17 @@ def test_comparison_hidden_no_results(
     _ = view.panel()
     assert view._comparison_plot_pane.visible is False
     assert view._comparison_track_select.visible is False
+
+
+def test_csv_export_without_results_fails_instead_of_empty_file(
+    view: WellAnalysisView,
+) -> None:
+    """CSV exports abort when no accommodation results are selected."""
+    _ = view.panel()
+    for btn in (
+        view._export_wd_btn,
+        view._export_acco_btn,
+        view._export_ratio_btn,
+    ):
+        with pytest.raises(ValueError, match="no accommodation results"):
+            btn.callback()
