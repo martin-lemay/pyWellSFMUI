@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "pyWellSFMUI: web interface for the pyWellSFM stratigraphic forward modeling simulator"
+abstract: >-
+  pyWellSFMUI is a web-based interface for pyWellSFM. It lets users create,
+  edit, load and save simulation inputs, run stratigraphic forward
+  simulations along wells, and visualize the results.
+authors:
+  - family-names: Lemay
+    given-names: Martin
+    orcid: "https://orcid.org/0000-0002-5538-7885"
+version: 0.1.0
+license: Apache-2.0
+repository-code: "https://github.com/martin-lemay/pyWellSFMUI"
+url: "https://pywellsfmui.readthedocs.io/en/latest/"
+keywords:
+  - stratigraphic forward modeling
+  - sedimentology
+  - stratigraphy
+  - well
+references:
+  - type: software
+    title: "pyWellSFM: Python Well Stratigraphic Forward Modeling"
+    authors:
+      - family-names: Lemay
+        given-names: Martin
+        orcid: "https://orcid.org/0000-0002-5538-7885"
+    version: 0.1.0
+    repository-code: "https://github.com/martin-lemay/pyWellSFM"
