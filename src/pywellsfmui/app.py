@@ -3,7 +3,9 @@ import logging
 from typing import Any
 
 import panel as pn
+import pywellsfm
 
+import pywellsfmui
 from pywellsfmui.state.actions import Actions
 from pywellsfmui.state.app_state import AppState
 from pywellsfmui.state.io_manager import IOManager
@@ -15,13 +17,34 @@ from pywellsfmui.views.status_bar import StatusBar
 from pywellsfmui.views.visualization import VisualizationView
 from pywellsfmui.views.well_analysis import WellAnalysisView
 
-pn.extension("plotly", "tabulator", sizing_mode="stretch_width")
+pn.extension(
+    "plotly",
+    "tabulator",
+    notifications=True,
+    sizing_mode="stretch_width",
+)
 
 _NAV_ITEMS = [
     ("Well Data Analysis", "well_analysis"),
     ("Simulation", "simulation"),
     ("Visualization", "visualization"),
 ]
+
+
+def _attach_session_logging(message_store: MessageStore) -> None:
+    """Forward pyWellSFM logs of the current session to its message store.
+
+    The pyWellSFM logger is shared by every session of the server, so the
+    handler only keeps records emitted while this session's document is
+    current, and is removed when the session is destroyed.
+    """
+    logger = logging.getLogger("pywellsfm")
+    handler = message_store.as_logging_handler()
+    doc = pn.state.curdoc
+    if doc is not None:
+        handler.addFilter(lambda _record: pn.state.curdoc is doc)
+        doc.on_session_destroyed(lambda _ctx: logger.removeHandler(handler))
+    logger.addHandler(handler)
 
 
 def create_app() -> pn.template.FastListTemplate:
@@ -35,9 +58,7 @@ def create_app() -> pn.template.FastListTemplate:
         message_store=message_store,
     )
 
-    logging.getLogger("pywellsfm").addHandler(
-        message_store.as_logging_handler()
-    )
+    _attach_session_logging(message_store)
 
     # Main content area — holds the active view
     main_area = pn.Column(
@@ -104,6 +125,13 @@ def create_app() -> pn.template.FastListTemplate:
     assert template.sidebar is not None
     template.sidebar.append(
         pn.Column(*nav_buttons, sizing_mode="stretch_width")
+    )
+    template.sidebar.append(
+        pn.pane.Markdown(
+            f"pyWellSFMUI {pywellsfmui.__version__}<br>"
+            f"pyWellSFM {pywellsfm.__version__}",
+            styles={"color": Colors.MUTED, "font-size": "0.8em"},
+        )
     )
 
     # Header — status badges

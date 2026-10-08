@@ -5,9 +5,12 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.dynamic]
+version = {attr = "pywellsfmui.__version__"}
+
 [project]
 name = "pywellsfmui"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Web-based interface for the pyWellSFM stratigraphic forward modeling simulator."
 authors = [{name = "Martin Lemay", email = "martinlemay@mines-paris.org"}]
 license = {file = "LICENSE"}
@@ -27,9 +30,10 @@ keywords = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "pywellsfm",
+    "pywellsfm>=0.1.0,<0.2",
     "panel>=1.4",
     "plotly>=6.0",
+    "pandas>=2.3",
 ]
 
 [project.optional-dependencies]

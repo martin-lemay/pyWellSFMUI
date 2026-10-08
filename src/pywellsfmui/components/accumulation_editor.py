@@ -22,6 +22,7 @@ from pywellsfm.model import (
     AccumulationModelElementOptimum,
 )
 
+from pywellsfmui.notifications import guarded_download
 from pywellsfmui.state.actions import Actions
 from pywellsfmui.state.app_state import AppState
 from pywellsfmui.theme import Colors, status_html
@@ -75,7 +76,9 @@ class AccumulationEditor(param.Parameterized):
             label="Load Accumulation Model",
         )
         self._download = pn.widgets.FileDownload(
-            callback=self._make_download,
+            callback=guarded_download(
+                self._make_download, "the accumulation model"
+            ),
             filename="accumulation_model.json",
             label="Save Accum. Model",
             color="success",

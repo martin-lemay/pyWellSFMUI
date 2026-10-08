@@ -9,6 +9,8 @@ import panel as pn
 import param
 from pywellsfm.model import Curve
 
+from pywellsfmui.notifications import guarded_download
+
 _COL_X = "X"
 _COL_Y = "Y"
 _NEW_POINT = "New..."
@@ -37,7 +39,7 @@ class CurveEditor(param.Parameterized):
 
         self._file_input = self._make_file_input()
         self._download = pn.widgets.FileDownload(
-            callback=self._make_download,
+            callback=guarded_download(self._make_download, "the curve"),
             filename="curve.csv",
             label="Save Curve",
             color="success",

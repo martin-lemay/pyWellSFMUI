@@ -1,14 +1,10 @@
-import os
+from pathlib import Path
 
 import pytest
 
 from pywellsfmui.state.io_manager import IOManager
 
-PYWELLSFM_TEST_DATA = (
-    "C:\\Users\\MartinLemay\\OneDrive - ELIIS"
-    "\\PERSO\\python\\SFM"
-    "\\pyWellSFM\\tests\\data"
-)
+EXAMPLES_DIR = Path(__file__).resolve().parents[1] / "examples"
 
 
 @pytest.fixture
@@ -17,37 +13,26 @@ def io_manager() -> IOManager:
     return IOManager()
 
 
-@pytest.mark.skipif(
-    not os.path.isdir(PYWELLSFM_TEST_DATA),
-    reason="pyWellSFM test data not found",
-)
-class TestIOManagerWithData:
-    """Tests requiring pyWellSFM test data."""
+def test_load_facies_model(io_manager: IOManager) -> None:
+    """Test loading a facies model from file."""
+    model = io_manager.load_facies_model(
+        str(EXAMPLES_DIR / "accommodation_facies_model.json")
+    )
+    assert model.faciesSet
 
-    def test_load_facies_model(self, io_manager: IOManager) -> None:
-        """Test loading a facies model from file."""
-        path = os.path.join(
-            PYWELLSFM_TEST_DATA,
-            "facies_model.json",
-        )
-        if not os.path.exists(path):
-            pytest.skip("facies_model.json not found")
-        model = io_manager.load_facies_model(path)
-        assert model is not None
 
-    def test_load_well(self, io_manager: IOManager) -> None:
-        """Test loading a well from file."""
-        well_files = [
-            f
-            for f in os.listdir(PYWELLSFM_TEST_DATA)
-            if "well" in f.lower() and f.endswith(".json")
-        ]
-        if not well_files:
-            pytest.skip("No well JSON found in test data")
-        well = io_manager.load_well(
-            os.path.join(PYWELLSFM_TEST_DATA, well_files[0])
-        )
-        assert well is not None
+def test_load_well(io_manager: IOManager) -> None:
+    """Test loading a well from file."""
+    well = io_manager.load_well(str(EXAMPLES_DIR / "accommodation_well.json"))
+    assert well.name
+
+
+def test_load_simulation(io_manager: IOManager) -> None:
+    """Test loading a full simulation from file."""
+    simulator = io_manager.load_simulation(
+        str(EXAMPLES_DIR / "simulation_simple.json")
+    )
+    assert simulator.scenario.accumulationModel is not None
 
 
 def test_io_manager_instantiation() -> None:

@@ -1,8 +1,20 @@
 """Sphinx configuration for pyWellSFMUI documentation."""
 
+import re
+from pathlib import Path
+
+_INIT = Path(__file__).resolve().parents[1] / "src" / "pywellsfmui" / "__init__.py"
+
 project = "pyWellSFMUI"
 author = "Martin Lemay"
-release = "0.1.0"
+copyright = "2026 Martin Lemay"
+# single source of truth: pywellsfmui.__version__
+_match = re.search(
+    r'^__version__ = "([^"]+)"', _INIT.read_text(encoding="utf-8"), re.M
+)
+if _match is None:
+    raise RuntimeError(f"__version__ not found in {_INIT}")
+release = _match.group(1)
 
 extensions = [
     "myst_parser",

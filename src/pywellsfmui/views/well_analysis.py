@@ -16,11 +16,24 @@ from pywellsfmui.components.facies_editor import (
 from pywellsfmui.components.well_importer import (
     WellImporter,
 )
+from pywellsfmui.notifications import guarded_download
 from pywellsfmui.state.actions import Actions
 from pywellsfmui.state.app_state import AppState
 from pywellsfmui.theme import Colors, status_html
 
 logger = logging.getLogger(__name__)
+
+
+def _png_export_config(filename: str) -> dict[str, Any]:
+    """Plotly config so the toolbar camera icon downloads a named PNG."""
+    return {
+        "displaylogo": False,
+        "toImageButtonOptions": {
+            "format": "png",
+            "filename": filename,
+            "scale": 2,
+        },
+    }
 
 
 class WellAnalysisView(param.Parameterized):
@@ -65,21 +78,16 @@ class WellAnalysisView(param.Parameterized):
         )
         self._plot_pane = pn.pane.Plotly(
             None,
+            config=_png_export_config("well"),
             sizing_mode="stretch_width",
             visible=False,
         )
 
-        # Export buttons
-        self._export_fig_btn = pn.widgets.FileDownload(
-            callback=self._export_figure_png,
-            filename="well.png",
-            label="Export Figure",
-            color="success",
-            width=120,
-            visible=False,
-        )
+        # Export buttons (figures are exported from the plot toolbar)
         self._export_wd_btn = pn.widgets.FileDownload(
-            callback=self._export_water_depth_csv,
+            callback=guarded_download(
+                self._export_water_depth_csv, "the water depth curve"
+            ),
             filename="WaterDepth.csv",
             label="Export Water Depth",
             color="default",
@@ -87,7 +95,9 @@ class WellAnalysisView(param.Parameterized):
             visible=False,
         )
         self._export_acco_btn = pn.widgets.FileDownload(
-            callback=self._export_accommodation_csv,
+            callback=guarded_download(
+                self._export_accommodation_csv, "the accommodation curve"
+            ),
             filename="Accommodation.csv",
             label="Export Accommodation",
             color="default",
@@ -95,7 +105,9 @@ class WellAnalysisView(param.Parameterized):
             visible=False,
         )
         self._export_ratio_btn = pn.widgets.FileDownload(
-            callback=self._export_ratio_csv,
+            callback=guarded_download(
+                self._export_ratio_csv, "the water depth / thickness ratio"
+            ),
             filename="WDThicknessRatio.csv",
             label="Export WD/Thickness",
             color="default",
@@ -123,15 +135,8 @@ class WellAnalysisView(param.Parameterized):
         )
         self._comparison_plot_pane = pn.pane.Plotly(
             None,
+            config=_png_export_config("WellComparison_Accommodation"),
             sizing_mode="stretch_width",
-            visible=False,
-        )
-        self._comparison_export_btn = pn.widgets.FileDownload(
-            callback=self._export_comparison_png,
-            filename="WellComparison_Accommodation.png",
-            label="Export Figure",
-            color="success",
-            width=120,
             visible=False,
         )
 
@@ -198,14 +203,12 @@ class WellAnalysisView(param.Parameterized):
         self._results_placeholder.visible = not has_results
         self._plot_pane.visible = has_results
         self._well_select.visible = has_results
-        self._export_fig_btn.visible = has_results
         self._export_wd_btn.visible = has_results
         self._export_acco_btn.visible = has_results
         self._export_ratio_btn.visible = has_results
 
         self._comparison_track_select.visible = has_results
         self._comparison_plot_pane.visible = has_results
-        self._comparison_export_btn.visible = has_results
 
         if has_results:
             self._results_placeholder.object = ""
@@ -228,43 +231,29 @@ class WellAnalysisView(param.Parameterized):
         except Exception:
             logger.debug("Plot update failed", exc_info=True)
             self._plot_pane.object = None
-        self._export_fig_btn.filename = f"{name}.png"
+        self._plot_pane.config = _png_export_config(name)
         self._export_wd_btn.filename = f"{name}_WaterDepth.csv"
         self._export_acco_btn.filename = f"{name}_Accommodation.csv"
         self._export_ratio_btn.filename = f"{name}_WDThicknessRatio.csv"
 
-    def _export_figure_png(self) -> io.BytesIO:
+    def _require_selected_calculator(self) -> Any:  # noqa: ANN401
         calc = self._get_selected_calculator()
         if calc is None:
-            return io.BytesIO(b"")
-        name = self._well_select.value
-        log_name = self._state.well_facies_log_names.get(name, "")
-        fig = plot_well_analysis(calc, log_name)
-        try:
-            png_bytes = fig.to_image(format="png", engine="kaleido")
-        except Exception:
-            logger.debug("Figure export failed", exc_info=True)
-            return io.BytesIO(b"")
-        return io.BytesIO(png_bytes)
+            raise ValueError("no accommodation results for the selected well")
+        return calc
 
     def _export_water_depth_csv(self) -> io.BytesIO:
-        calc = self._get_selected_calculator()
-        if calc is None:
-            return io.BytesIO(b"")
+        calc = self._require_selected_calculator()
         data = uncertaintyCurveToBytes(calc.waterDepthCurve)
         return io.BytesIO(data)
 
     def _export_accommodation_csv(self) -> io.BytesIO:
-        calc = self._get_selected_calculator()
-        if calc is None:
-            return io.BytesIO(b"")
+        calc = self._require_selected_calculator()
         data = uncertaintyCurveToBytes(calc.accommodationCurve)
         return io.BytesIO(data)
 
     def _export_ratio_csv(self) -> io.BytesIO:
-        calc = self._get_selected_calculator()
-        if calc is None:
-            return io.BytesIO(b"")
+        calc = self._require_selected_calculator()
         name = self._well_select.value
         log_name = self._state.well_facies_log_names.get(name, "")
         ratio = calc.computeWaterDepthThicknessRatioCurve(log_name)
@@ -290,33 +279,13 @@ class WellAnalysisView(param.Parameterized):
             logger.debug("Comparison plot failed", exc_info=True)
             self._comparison_plot_pane.object = None
         track_file = track_label.replace("/", "").replace(" ", "")
-        self._comparison_export_btn.filename = (
-            f"WellComparison_{track_file}.png"
+        self._comparison_plot_pane.config = _png_export_config(
+            f"WellComparison_{track_file}"
         )
-
-    def _export_comparison_png(self) -> io.BytesIO:
-        results = self._state.accommodation_results
-        if not results:
-            return io.BytesIO(b"")
-        track_label = self._comparison_track_select.value
-        track = self._track_map.get(track_label, "accommodation")
-        fig = plot_well_comparison(
-            results,
-            self._state.well_facies_log_names,
-            track=track,
-        )
-        try:
-            png_bytes = fig.to_image(format="png", engine="kaleido")
-        except Exception:
-            logger.debug("Comparison export failed", exc_info=True)
-            return io.BytesIO(b"")
-        return io.BytesIO(png_bytes)
 
     def panel(self) -> pn.Column:
         """Return the Panel layout for this view."""
         export_row = pn.Row(
-            self._export_fig_btn,
-            pn.Spacer(width=20),
             self._export_wd_btn,
             self._export_acco_btn,
             self._export_ratio_btn,
@@ -335,12 +304,7 @@ class WellAnalysisView(param.Parameterized):
 
         comparison_section = pn.Column(
             pn.pane.Markdown("### Well Comparison"),
-            pn.Row(
-                self._comparison_track_select,
-                self._comparison_export_btn,
-                sizing_mode="stretch_width",
-                align="center",
-            ),
+            self._comparison_track_select,
             self._comparison_plot_pane,
             sizing_mode="stretch_width",
         )

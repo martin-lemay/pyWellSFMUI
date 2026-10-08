@@ -142,3 +142,11 @@ def test_run_failure_stays_on_tab(
     nav_spy.assert_not_called()
     assert view._run_btn.disabled is False
     assert view._spinner.visible is False
+
+
+def test_save_download_fails_instead_of_empty_file(
+    view: SimulationView,
+) -> None:
+    """Saving without an accumulation model aborts the download."""
+    with pytest.raises(ValueError, match="No accumulation model"):
+        view._save_btn.callback()

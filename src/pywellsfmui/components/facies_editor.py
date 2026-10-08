@@ -17,6 +17,7 @@ from pywellsfm.model import (
     SedimentaryFacies,
 )
 
+from pywellsfmui.notifications import guarded_download
 from pywellsfmui.state.actions import Actions
 from pywellsfmui.state.app_state import AppState
 from pywellsfmui.theme import Colors, status_html
@@ -70,7 +71,7 @@ class FaciesEditor(param.Parameterized):
             label="Load Facies Model",
         )
         self._download = pn.widgets.FileDownload(
-            callback=self._make_download,
+            callback=guarded_download(self._make_download, "the facies model"),
             filename="facies_model.json",
             label="Save Facies Model",
             color="success",

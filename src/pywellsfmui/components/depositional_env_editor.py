@@ -20,6 +20,7 @@ from pywellsfm.model.EnvironmentConditionModel import (
 from pywellsfm.utils import IntervalDistanceMethod
 
 from pywellsfmui.components.curve_editor import CurveEditor
+from pywellsfmui.notifications import guarded_download
 from pywellsfmui.state.actions import Actions
 from pywellsfmui.state.app_state import AppState
 from pywellsfmui.theme import Colors, status_html
@@ -93,7 +94,9 @@ class DepositionalEnvEditor(param.Parameterized):
             width=250,
         )
         self._global_save = pn.widgets.FileDownload(
-            callback=self._make_global_download,
+            callback=guarded_download(
+                self._make_global_download, "the environment conditions"
+            ),
             filename="environment_conditions.json",
             label="Save Conditions",
             color="success",
@@ -106,7 +109,9 @@ class DepositionalEnvEditor(param.Parameterized):
             width=250,
         )
         self._multi_save = pn.widgets.FileDownload(
-            callback=self._make_multi_download,
+            callback=guarded_download(
+                self._make_multi_download, "the environment simulation"
+            ),
             filename="de_simulation.json",
             label="Save DE Simulation",
             color="success",
