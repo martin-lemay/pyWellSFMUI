@@ -2135,3 +2135,12 @@ def test_run_simulation_stores_simulated_wells(
         mock_well_1,
         mock_well_2,
     ]
+
+
+def test_accommodation_process_pool_is_shared_and_bounded() -> None:
+    """All sessions reuse one process pool with a bounded worker count."""
+    from pywellsfmui.state import actions as actions_module
+
+    pool = actions_module._get_process_pool()
+    assert actions_module._get_process_pool() is pool
+    assert pool._max_workers <= actions_module._MAX_ACCOMMODATION_WORKERS

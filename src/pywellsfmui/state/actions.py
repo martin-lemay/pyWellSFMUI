@@ -1,8 +1,9 @@
 import asyncio
 import contextlib
-import json
+import os
 import tempfile
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 from typing import Any
 
@@ -59,6 +60,23 @@ from pywellsfm.simulator import (
 from pywellsfmui.state.app_state import AppState
 from pywellsfmui.state.io_manager import IOManager
 from pywellsfmui.state.message_store import MessageLevel, MessageStore
+from pywellsfmui.state.uploads import load_uploaded_json
+
+# Process pool shared by all sessions, so that concurrent users do not each
+# spawn one process per CPU core.
+_MAX_ACCOMMODATION_WORKERS = min(4, os.cpu_count() or 1)
+_process_pool: ProcessPoolExecutor | None = None
+
+
+def _get_process_pool() -> ProcessPoolExecutor:
+    """Return the shared process pool, creating it on first use."""
+    global _process_pool
+    if _process_pool is None:
+        _process_pool = ProcessPoolExecutor(
+            max_workers=_MAX_ACCOMMODATION_WORKERS
+        )
+    return _process_pool
+
 
 _FACIES_CONSTRUCTORS: dict[FaciesCriteriaType, type[Facies]] = {
     FaciesCriteriaType.SEDIMENTOLOGICAL: SedimentaryFacies,
@@ -190,7 +208,7 @@ class Actions:
                 after being logged.
         """
         try:
-            obj = json.loads(data.decode("utf-8"))
+            obj = load_uploaded_json(data)
             model = loadFaciesModelFromJsonObj(obj)
             self._state.facies_model = model
             self._reset_accommodation_results()
@@ -534,6 +552,8 @@ class Actions:
         """
         ext = Path(filename).suffix.lower() if filename else ".json"
         try:
+            if ext == ".json":
+                load_uploaded_json(data)
             with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
                 tmp.write(data)
                 tmp_path = tmp.name
@@ -642,8 +662,8 @@ class Actions:
     async def compute_all_accommodation_async(self) -> None:
         """Async version: compute accommodation in parallel.
 
-        Uses ProcessPoolExecutor for true parallelism.
-        Falls back to sequential if pickling fails.
+        Uses the shared process pool for true parallelism.
+        Falls back to sequential if the pool is unavailable.
         """
         if not self._state.wells:
             self._messages.add(
@@ -666,22 +686,29 @@ class Actions:
             log_name = self._state.well_facies_log_names.get(well.name, "")
             tasks.append((well, facies_list, log_name))
 
+        global _process_pool
         loop = asyncio.get_running_loop()
         try:
-            with ProcessPoolExecutor() as executor:
-                futures = [
-                    loop.run_in_executor(
-                        executor,
-                        _compute_one_well,
-                        well,
-                        fl,
-                        ln,
-                    )
-                    for well, fl, ln in tasks
-                ]
-                raw = await asyncio.gather(*futures, return_exceptions=True)
+            executor = _get_process_pool()
+            futures = [
+                loop.run_in_executor(
+                    executor,
+                    _compute_one_well,
+                    well,
+                    fl,
+                    ln,
+                )
+                for well, fl, ln in tasks
+            ]
+            raw = await asyncio.gather(*futures, return_exceptions=True)
+            if any(isinstance(item, BrokenProcessPool) for item in raw):
+                raise BrokenProcessPool("accommodation worker crashed")
         except Exception:
-            # Pickling failed — fall back to sequential
+            # Pool unusable (e.g. a worker crashed): recreate it next time
+            # and fall back to sequential computation
+            if isinstance(_process_pool, ProcessPoolExecutor):
+                _process_pool.shutdown(wait=False, cancel_futures=True)
+            _process_pool = None
             self._messages.add(
                 MessageLevel.INFO,
                 "Parallel computation unavailable, running sequentially",
@@ -854,7 +881,7 @@ class Actions:
                 is re-raised after being logged.
         """
         try:
-            obj = json.loads(data.decode("utf-8"))
+            obj = load_uploaded_json(data)
             model = loadAccumulationModelFromJsonObj(obj)
             self._state.accumulation_model = model
             label = filename or "file"
@@ -1529,6 +1556,7 @@ class Actions:
         import tempfile
 
         try:
+            load_uploaded_json(data)
             with tempfile.NamedTemporaryFile(
                 suffix=".json",
                 delete=False,
@@ -1536,9 +1564,10 @@ class Actions:
             ) as f:
                 f.write(data)
                 tmp_path = f.name
-
-            simulator = self._io.load_simulation(tmp_path)
-            Path(tmp_path).unlink(missing_ok=True)
+            try:
+                simulator = self._io.load_simulation(tmp_path)
+            finally:
+                Path(tmp_path).unlink(missing_ok=True)
 
             sc = simulator.scenario
             self._state.accumulation_model = sc.accumulationModel
@@ -1607,13 +1636,15 @@ class Actions:
             ) as f:
                 tmp_path = f.name
 
-            self._io.save_simulation(
-                simulator,
-                tmp_path,
-                name="simulation",
-            )
-            data = Path(tmp_path).read_bytes()
-            Path(tmp_path).unlink(missing_ok=True)
+            try:
+                self._io.save_simulation(
+                    simulator,
+                    tmp_path,
+                    name="simulation",
+                )
+                data = Path(tmp_path).read_bytes()
+            finally:
+                Path(tmp_path).unlink(missing_ok=True)
 
             self._messages.add(
                 MessageLevel.INFO,
@@ -1706,7 +1737,7 @@ class Actions:
     ) -> None:
         """Load a DE simulation from raw JSON bytes."""
         try:
-            obj = json.loads(data)
+            obj = load_uploaded_json(data)
             sim = self._io.load_de_simulation_from_json_obj(obj)
             self._state.depositional_env_model = (
                 sim.depositionalEnvironmentModel
@@ -1755,7 +1786,7 @@ class Actions:
     ) -> None:
         """Load global env conditions from JSON bytes."""
         try:
-            obj = json.loads(data)
+            obj = load_uploaded_json(data)
             model = self._io.load_env_conditions_from_json_obj(
                 obj,
             )
